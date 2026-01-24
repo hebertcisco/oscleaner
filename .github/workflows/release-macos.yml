@@ -1,0 +1,236 @@
+name: Release macOS + Homebrew
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: "Tag to release (e.g., v1.0.0)"
+        required: true
+
+env:
+  HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+  HOMEBREW_TAP: ${{ secrets.HOMEBREW_TAP }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --locked --release --target ${{ matrix.target }}
+
+      - name: Package tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIST="dist"
+          BIN="target/${{ matrix.target }}/release/oscleaner"
+          mkdir -p "$DIST"
+          cp "$BIN" "$DIST/oscleaner-${{ matrix.target }}"
+          tar -czf "$DIST/oscleaner-${{ matrix.target }}.tar.gz" -C "$DIST" "oscleaner-${{ matrix.target }}"
+
+      - name: Create DMG (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIST="dist"
+          DMG_ROOT="$DIST/dmg-root"
+          mkdir -p "$DMG_ROOT"
+          cp "target/${{ matrix.target }}/release/oscleaner" "$DMG_ROOT/oscleaner"
+          hdiutil create -volname "oscleaner" -srcfolder "$DMG_ROOT" -ov -format UDZO "$DIST/oscleaner-${{ matrix.target }}.dmg"
+          rm -rf "$DMG_ROOT"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: oscleaner-${{ matrix.target }}
+          path: dist/**
+          if-no-files-found: error
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.resolve_tag.outputs.tag }}
+      version: ${{ steps.resolve_tag.outputs.version }}
+    steps:
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: .
+          merge-multiple: true
+
+      - name: Resolve release tag
+        id: resolve_tag
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="${{ inputs.version_tag }}"
+          fi
+          CLEAN="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$CLEAN" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.resolve_tag.outputs.tag }}
+          name: oscleaner ${{ steps.resolve_tag.outputs.tag }}
+          files: |
+            dist/**/*.tar.gz
+            dist/**/*.dmg
+          generate_release_notes: true
+          overwrite: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-homebrew:
+    name: Publish Homebrew tap
+    runs-on: ubuntu-latest
+    needs: release
+    env:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      HOMEBREW_TAP: ${{ secrets.HOMEBREW_TAP }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Download release artifacts for Homebrew
+        id: brew_artifacts
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.release.outputs.tag }}"
+          BASE_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+
+          declare -A FILES=(
+            [darwin_arm64]="oscleaner-aarch64-apple-darwin.tar.gz"
+            [darwin_intel]="oscleaner-x86_64-apple-darwin.tar.gz"
+            [linux_x86_64]="oscleaner-x86_64-unknown-linux-gnu.tar.gz"
+          )
+
+          mkdir -p artifacts
+          for key in "${!FILES[@]}"; do
+            file="${FILES[$key]}"
+            url="$BASE_URL/$file"
+            echo "Downloading $url"
+            curl -L --fail -H "Authorization: Bearer $GITHUB_TOKEN" -o "artifacts/$file" "$url"
+            sha=$(sha256sum "artifacts/$file" | awk '{print $1}')
+            echo "${key}_url=$url" >> "$GITHUB_OUTPUT"
+            echo "${key}_sha=$sha" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Checkout tap repository
+        uses: actions/checkout@v4
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
+        with:
+          repository: ${{ env.HOMEBREW_TAP }}
+          token: ${{ env.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Update formula
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p tap/Formula
+          cat > tap/Formula/oscleaner.rb <<'EOF'
+          # typed: false
+          # frozen_string_literal: true
+
+          class Oscleaner < Formula
+            desc "Cross-platform system cleanup CLI"
+            homepage "https://github.com/hebertcisco/oscleaner"
+            version "<VERSION>"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "<DARWIN_ARM_URL>"
+                sha256 "<DARWIN_ARM_SHA>"
+              else
+                url "<DARWIN_INTEL_URL>"
+                sha256 "<DARWIN_INTEL_SHA>"
+              end
+            end
+
+            on_linux do
+              url "<LINUX_URL>"
+              sha256 "<LINUX_SHA>"
+            end
+
+            def install
+              bin_name = if OS.mac?
+                Hardware::CPU.arm? ? "oscleaner-aarch64-apple-darwin" : "oscleaner-x86_64-apple-darwin"
+              else
+                "oscleaner-x86_64-unknown-linux-gnu"
+              end
+
+              bin.install bin_name => "oscleaner"
+            end
+
+            test do
+              output = shell_output("#{bin}/oscleaner --help")
+              assert_match "oscleaner", output
+            end
+          end
+          EOF
+
+          darwin_arm_url="${{ steps.brew_artifacts.outputs.darwin_arm64_url }}"
+          darwin_arm_sha="${{ steps.brew_artifacts.outputs.darwin_arm64_sha }}"
+          darwin_intel_url="${{ steps.brew_artifacts.outputs.darwin_intel_url }}"
+          darwin_intel_sha="${{ steps.brew_artifacts.outputs.darwin_intel_sha }}"
+          linux_url="${{ steps.brew_artifacts.outputs.linux_x86_64_url }}"
+          linux_sha="${{ steps.brew_artifacts.outputs.linux_x86_64_sha }}"
+
+          sed -i "s|<VERSION>|$VERSION|g" tap/Formula/oscleaner.rb
+          sed -i "s|<DARWIN_ARM_URL>|$darwin_arm_url|g" tap/Formula/oscleaner.rb
+          sed -i "s|<DARWIN_ARM_SHA>|$darwin_arm_sha|g" tap/Formula/oscleaner.rb
+          sed -i "s|<DARWIN_INTEL_URL>|$darwin_intel_url|g" tap/Formula/oscleaner.rb
+          sed -i "s|<DARWIN_INTEL_SHA>|$darwin_intel_sha|g" tap/Formula/oscleaner.rb
+          sed -i "s|<LINUX_URL>|$linux_url|g" tap/Formula/oscleaner.rb
+          sed -i "s|<LINUX_SHA>|$linux_sha|g" tap/Formula/oscleaner.rb
+
+      - name: Commit and push tap update
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
+        run: |
+          set -euo pipefail
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/oscleaner.rb
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Update oscleaner formula to v${{ needs.release.outputs.version }}"
+          git push origin HEAD

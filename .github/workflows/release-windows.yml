@@ -1,0 +1,178 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: "Tag to release (e.g., v1.0.0)"
+        required: true
+
+env:
+  CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --locked --release --target x86_64-pc-windows-msvc
+
+      - name: Package artifacts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          $bin = "target/x86_64-pc-windows-msvc/release/oscleaner.exe"
+          Copy-Item $bin "dist/oscleaner-x86_64-pc-windows-msvc.exe" -Force
+          Compress-Archive -Path "dist/oscleaner-x86_64-pc-windows-msvc.exe" -DestinationPath "dist/oscleaner-x86_64-pc-windows-msvc.zip" -Force
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: oscleaner-windows
+          path: dist/**
+          if-no-files-found: error
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build-windows
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.resolve_tag.outputs.tag }}
+      version: ${{ steps.resolve_tag.outputs.version }}
+    steps:
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: oscleaner-windows
+          path: .
+
+      - name: Resolve release tag
+        id: resolve_tag
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="${{ inputs.version_tag }}"
+          fi
+          CLEAN="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$CLEAN" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.resolve_tag.outputs.tag }}
+          name: oscleaner ${{ steps.resolve_tag.outputs.tag }}
+          files: |
+            dist/**/*.zip
+            dist/**/*.exe
+          generate_release_notes: true
+          overwrite: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-chocolatey:
+    runs-on: windows-latest
+    needs: release
+    env:
+      CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ needs.release.outputs.tag }}
+      VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - name: Checkout repository
+        if: ${{ env.CHOCO_API_KEY != '' }}
+        uses: actions/checkout@v4
+
+      - name: Compute Windows artifact info
+        id: windows_artifacts
+        shell: pwsh
+        if: ${{ env.CHOCO_API_KEY != '' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repo = "${{ github.repository }}"
+          $tag  = $env:TAG
+          $target = "x86_64-pc-windows-msvc"
+
+          $apiHeaders = @{
+            Authorization = "Bearer $env:GITHUB_TOKEN"
+            Accept        = 'application/vnd.github+json'
+            'User-Agent'  = 'oscleaner-release'
+          }
+
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/tags/$tag" -Headers $apiHeaders
+
+          $findAsset = {
+            param($name)
+            $match = $release.assets | Where-Object { $_.name -eq $name } | Select-Object -First 1
+            if (-not $match) { throw "Asset '$name' not found in release '$tag'. Found: $($release.assets.name -join ', ')" }
+            return $match.browser_download_url
+          }
+
+          $exeName = "oscleaner-$target.exe"
+          $zipName = "oscleaner-$target.zip"
+          $exeUrl = & $findAsset $exeName
+          $zipUrl = & $findAsset $zipName
+
+          $downloadHeaders = @{
+            Authorization = "Bearer $env:GITHUB_TOKEN"
+            Accept        = 'application/octet-stream'
+          }
+
+          Invoke-WebRequest -Uri $exeUrl -Headers $downloadHeaders -OutFile "oscleaner.exe"
+          Invoke-WebRequest -Uri $zipUrl -Headers $downloadHeaders -OutFile "oscleaner.zip"
+          $exeSha = (Get-FileHash oscleaner.exe -Algorithm SHA256).Hash.ToLower()
+          $zipSha = (Get-FileHash oscleaner.zip -Algorithm SHA256).Hash.ToLower()
+          "windows_url=$exeUrl" >> $env:GITHUB_OUTPUT
+          "windows_sha=$exeSha" >> $env:GITHUB_OUTPUT
+          "windows_zip_url=$zipUrl" >> $env:GITHUB_OUTPUT
+          "windows_zip_sha=$zipSha" >> $env:GITHUB_OUTPUT
+
+      - name: Publish to Chocolatey
+        shell: pwsh
+        if: ${{ env.CHOCO_API_KEY != '' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = "${{ env.VERSION }}"
+          $zipUrl = "${{ steps.windows_artifacts.outputs.windows_zip_url }}"
+          $zipSha = "${{ steps.windows_artifacts.outputs.windows_zip_sha }}"
+
+          $toolsPath = "tools"
+          New-Item -ItemType Directory -Force -Path $toolsPath | Out-Null
+          Set-Content -Path "$toolsPath/chocolateyinstall.ps1" -Value @"
+          $ErrorActionPreference = 'Stop'
+          $packageArgs = @{
+            packageName    = 'oscleaner'
+            url64bit       = '$zipUrl'
+            checksumType64 = 'sha256'
+            checksum64     = '$zipSha'
+            unzipLocation  = "$(Split-Path -Parent $MyInvocation.MyCommand.Definition)"
+          }
+          Install-ChocolateyZipPackage @packageArgs
+          $unzippedExe = Join-Path $packageArgs.unzipLocation "dist/oscleaner-x86_64-pc-windows-msvc.exe"
+          if (Test-Path $unzippedExe) {
+            Move-Item $unzippedExe $packageArgs.unzipLocation -Force
+            Remove-Item (Join-Path $packageArgs.unzipLocation 'dist') -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          "@
+
+          choco pack oscleaner.nuspec --version $version --out package
+          choco push "package/oscleaner.$version.nupkg" --source "https://push.chocolatey.org/" --api-key "$env:CHOCO_API_KEY"

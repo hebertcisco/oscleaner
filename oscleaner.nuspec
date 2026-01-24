@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>oscleaner</id>
+    <version>1.0.0</version>
+    <title>OSCleaner</title>
+    <authors>hebertcisco</authors>
+    <owners>hebertcisco</owners>
+    <projectUrl>https://github.com/hebertcisco/oscleaner</projectUrl>
+    <licenseUrl>https://raw.githubusercontent.com/hebertcisco/oscleaner/main/LICENSE</licenseUrl>
+    <packageSourceUrl>https://github.com/hebertcisco/oscleaner</packageSourceUrl>
+    <projectSourceUrl>https://github.com/hebertcisco/oscleaner</projectSourceUrl>
+    <docsUrl>https://github.com/hebertcisco/oscleaner#readme</docsUrl>
+    <bugTrackerUrl>https://github.com/hebertcisco/oscleaner/issues</bugTrackerUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <summary>Cross-platform cleanup CLI with dry-run previews and disk reclaim estimates.</summary>
+    <description>OSCleaner is a cross-platform CLI that scans and removes development and system artifacts (e.g., node_modules, Docker cache, Android/iOS builds, OS temp files) to free disk space. It supports Windows and macOS, offers interactive selection, dry-run previews, and progress reporting to keep your system tidy.</description>
+    <releaseNotes>https://github.com/hebertcisco/oscleaner/releases/latest</releaseNotes>
+    <tags>cleanup disk-space system utility rust cli cache windows macos</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

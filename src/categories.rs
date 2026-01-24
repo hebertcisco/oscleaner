@@ -1,0 +1,173 @@
+use std::path::PathBuf;
+
+use crate::context::ScanContext;
+use crate::detectors::*;
+use crate::types::Platform;
+
+#[derive(Clone)]
+pub struct CleanupCategory {
+    pub id: &'static str,
+    pub name: &'static str,
+    pub description: &'static str,
+    pub platform: Platform,
+    pub detector: fn(&ScanContext) -> Vec<PathBuf>,
+}
+
+pub fn build_categories() -> Vec<CleanupCategory> {
+    vec![
+        CleanupCategory {
+            id: "node_modules",
+            name: "Node modules",
+            description: "node_modules directories from Node.js projects",
+            platform: Platform::All,
+            detector: detect_node_modules,
+        },
+        CleanupCategory {
+            id: "docker",
+            name: "Docker data",
+            description: "Docker caches, images, containers, and build data",
+            platform: Platform::All,
+            detector: detect_docker_data,
+        },
+        CleanupCategory {
+            id: "xcode",
+            name: "Xcode DerivedData & Archives",
+            description: "DerivedData and archives from Xcode builds",
+            platform: Platform::Mac,
+            detector: detect_xcode_data,
+        },
+        CleanupCategory {
+            id: "android_builds",
+            name: "Android build folders",
+            description: "android/build and related build artifacts",
+            platform: Platform::All,
+            detector: detect_android_builds,
+        },
+        CleanupCategory {
+            id: "react_native_ios",
+            name: "React Native iOS Pods/builds",
+            description: "ios/Pods and ios/build directories",
+            platform: Platform::All,
+            detector: detect_react_native_ios,
+        },
+        CleanupCategory {
+            id: "gradle_cache",
+            name: "Gradle cache",
+            description: "~/.gradle/caches",
+            platform: Platform::All,
+            detector: detect_gradle_cache,
+        },
+        CleanupCategory {
+            id: "maven_cache",
+            name: "Maven repository cache",
+            description: "~/.m2/repository",
+            platform: Platform::All,
+            detector: detect_maven_cache,
+        },
+        CleanupCategory {
+            id: "cargo_targets",
+            name: "Cargo target dirs",
+            description: "target/ directories from Rust builds",
+            platform: Platform::All,
+            detector: detect_cargo_targets,
+        },
+        CleanupCategory {
+            id: "python_cache",
+            name: "Python __pycache__ and venvs",
+            description: "__pycache__, .pyc, and virtual environment folders",
+            platform: Platform::All,
+            detector: detect_python_artifacts,
+        },
+        CleanupCategory {
+            id: "cocoapods_cache",
+            name: "CocoaPods cache",
+            description: "~/Library/Caches/CocoaPods",
+            platform: Platform::Mac,
+            detector: detect_cocoapods_cache,
+        },
+        CleanupCategory {
+            id: "mac_caches",
+            name: "macOS user caches",
+            description: "~/Library/Caches and temp files",
+            platform: Platform::Mac,
+            detector: detect_mac_user_caches,
+        },
+        CleanupCategory {
+            id: "mac_logs",
+            name: "macOS logs",
+            description: "System and user log files",
+            platform: Platform::Mac,
+            detector: detect_mac_logs,
+        },
+        CleanupCategory {
+            id: "mac_tmp",
+            name: "macOS temporary files",
+            description: "/tmp and CrashReporter data",
+            platform: Platform::Mac,
+            detector: detect_mac_temp,
+        },
+        CleanupCategory {
+            id: "ios_backups",
+            name: "iOS device backups",
+            description: "MobileSync backups",
+            platform: Platform::Mac,
+            detector: detect_ios_backups,
+        },
+        CleanupCategory {
+            id: "homebrew_cache",
+            name: "Homebrew cache",
+            description: "~/Library/Caches/Homebrew",
+            platform: Platform::Mac,
+            detector: detect_homebrew_cache,
+        },
+        CleanupCategory {
+            id: "mail_downloads",
+            name: "Mail downloads cache",
+            description: "Downloaded email attachments",
+            platform: Platform::Mac,
+            detector: detect_mail_downloads,
+        },
+        CleanupCategory {
+            id: "windows_temp",
+            name: "Windows temp files",
+            description: "%TEMP% temporary files",
+            platform: Platform::Windows,
+            detector: detect_windows_temp,
+        },
+        CleanupCategory {
+            id: "windows_update",
+            name: "Windows Update cache",
+            description: "SoftwareDistribution download cache",
+            platform: Platform::Windows,
+            detector: detect_windows_update_cache,
+        },
+        CleanupCategory {
+            id: "windows_thumbnail",
+            name: "Windows thumbnail cache",
+            description: "Explorer thumbnail cache",
+            platform: Platform::Windows,
+            detector: detect_windows_thumbnail_cache,
+        },
+        CleanupCategory {
+            id: "windows_prefetch",
+            name: "Windows prefetch files",
+            description: "Prefetch folder",
+            platform: Platform::Windows,
+            detector: detect_windows_prefetch,
+        },
+        CleanupCategory {
+            id: "windows_wer",
+            name: "Windows error reporting",
+            description: "WER report archives",
+            platform: Platform::Windows,
+            detector: detect_windows_wer,
+        },
+        CleanupCategory {
+            id: "browser_caches",
+            name: "Browser caches",
+            description: "Chrome, Firefox, Edge, Safari, Brave caches",
+            platform: Platform::All,
+            detector: detect_browser_caches,
+        },
+    ]
+}
