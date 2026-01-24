@@ -123,7 +123,14 @@ jobs:
       HOMEBREW_TAP: ${{ secrets.HOMEBREW_TAP }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Download release artifacts for Homebrew
+      - name: Download build artifacts for Homebrew
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Collect artifact URLs and SHAs
         id: brew_artifacts
         if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
         run: |
@@ -137,14 +144,15 @@ jobs:
             [linux_x86_64]="oscleaner-x86_64-unknown-linux-gnu.tar.gz"
           )
 
-          mkdir -p artifacts
           for key in "${!FILES[@]}"; do
-            file="${FILES[$key]}"
-            url="$BASE_URL/$file"
-            echo "Downloading $url"
-            curl -L --fail -H "Authorization: Bearer $GITHUB_TOKEN" -o "artifacts/$file" "$url"
-            sha=$(sha256sum "artifacts/$file" | awk '{print $1}')
-            echo "${key}_url=$url" >> "$GITHUB_OUTPUT"
+            file="artifacts/dist/${FILES[$key]}"
+            if [ ! -f "$file" ]; then
+              echo "::error::Missing expected artifact '$file'. Check the build outputs for the $key target." >&2
+              exit 1
+            fi
+
+            sha=$(sha256sum "$file" | awk '{print $1}')
+            echo "${key}_url=$BASE_URL/${FILES[$key]}" >> "$GITHUB_OUTPUT"
             echo "${key}_sha=$sha" >> "$GITHUB_OUTPUT"
           done
 
