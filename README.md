@@ -1,6 +1,6 @@
 # OSCleaner
 
-[![🚀 CI](https://github.com/hebertcisco/oscleaner/actions/workflows/ci.yml/badge.svg)](https://github.com/hebertcisco/oscleaner/actions/workflows/ci.yml)
+[![CI](https://github.com/hebertcisco/oscleaner/actions/workflows/ci.yml/badge.svg)](https://github.com/hebertcisco/oscleaner/actions/workflows/ci.yml)
 
 A cross-platform system cleanup CLI tool written in Rust to free up disk space by removing development and system artifacts. It works on both Windows and macOS.
 
@@ -67,8 +67,8 @@ choco upgrade oscleaner
 ### macOS or Linux (Homebrew tap)
 
 ```bash
-brew tap hebertcisco/tap
-brew install oscleaner
+brew tap hebertcisco/homebrew-tap
+brew install hebertcisco/homebrew-tap/oscleaner
 ```
 
 ### Cargo (from source)
@@ -129,6 +129,15 @@ Contributions are welcome! Please feel free to submit a pull request.
 4.  Commit your changes (`git commit -am 'Add some feature'`).
 5.  Push to the branch (`git push origin feature/your-feature`).
 6.  Create a new Pull Request.
+
+## Release automation
+
+Tagged releases trigger `.github/workflows/release.yml`, which builds binaries
+for macOS (Apple Silicon and Intel), Linux, and Windows. Artifacts are uploaded
+to GitHub Releases and then consumed by the downstream package managers:
+
+- **Chocolatey and WinGet:** Publishing steps in the release workflow update
+  the Windows packages when the respective API keys are configured.
 
 ## License
 
