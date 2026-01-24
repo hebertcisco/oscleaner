@@ -169,7 +169,6 @@ jobs:
       - name: Update formula in tap
         if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
         env:
-          VERSION: ${{ needs.release.outputs.version }}
           DARWIN_ARM_URL: ${{ steps.brew_artifacts.outputs.darwin_arm64_url }}
           DARWIN_ARM_SHA: ${{ steps.brew_artifacts.outputs.darwin_arm64_sha }}
           DARWIN_INTEL_URL: ${{ steps.brew_artifacts.outputs.darwin_intel_url }}
@@ -186,7 +185,6 @@ jobs:
           class Oscleaner < Formula
             desc "Cross-platform system cleanup CLI"
             homepage "https://github.com/hebertcisco/oscleaner"
-            version "<VERSION>"
             license "MIT"
 
             on_macos do
@@ -221,7 +219,6 @@ jobs:
           end
           EOF
 
-          sed -i "s|<VERSION>|$VERSION|g" tap/Formula/oscleaner.rb
           sed -i "s|<DARWIN_ARM_URL>|$DARWIN_ARM_URL|g" tap/Formula/oscleaner.rb
           sed -i "s|<DARWIN_ARM_SHA>|$DARWIN_ARM_SHA|g" tap/Formula/oscleaner.rb
           sed -i "s|<DARWIN_INTEL_URL>|$DARWIN_INTEL_URL|g" tap/Formula/oscleaner.rb
