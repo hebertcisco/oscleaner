@@ -120,16 +120,15 @@ jobs:
     needs: release
     steps:
       - name: Download build artifacts for Homebrew
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
         uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: Set up Homebrew
-        uses: Homebrew/actions/setup-homebrew@master
-
       - name: Collect artifact URLs and SHAs
         id: brew_artifacts
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
         run: |
           set -euo pipefail
           TAG="${{ needs.release.outputs.tag }}"
@@ -156,20 +155,88 @@ jobs:
             echo "${key}_sha=$sha" >> "$GITHUB_OUTPUT"
           done
 
-      - name: Submit formula to Homebrew Core
+      - name: Checkout tap repository
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.HOMEBREW_TAP }}
+          token: ${{ env.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Update formula in tap
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
         env:
-          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           VERSION: ${{ needs.release.outputs.version }}
           DARWIN_ARM_URL: ${{ steps.brew_artifacts.outputs.darwin_arm64_url }}
           DARWIN_ARM_SHA: ${{ steps.brew_artifacts.outputs.darwin_arm64_sha }}
+          DARWIN_INTEL_URL: ${{ steps.brew_artifacts.outputs.darwin_intel_url }}
+          DARWIN_INTEL_SHA: ${{ steps.brew_artifacts.outputs.darwin_intel_sha }}
+          LINUX_URL: ${{ steps.brew_artifacts.outputs.linux_x86_64_url }}
+          LINUX_SHA: ${{ steps.brew_artifacts.outputs.linux_x86_64_sha }}
         run: |
           set -euo pipefail
-          brew bump-formula-pr \
-            --version="${VERSION}" \
-            --url="${DARWIN_ARM_URL}" \
-            --sha256="${DARWIN_ARM_SHA}" \
-            --force \
-            --no-browse \
-            --no-audit \
-            --message="oscleaner ${VERSION}" \
-            oscleaner
+          mkdir -p tap/Formula
+          cat > tap/Formula/oscleaner.rb <<'EOF'
+          # typed: false
+          # frozen_string_literal: true
+
+          class Oscleaner < Formula
+            desc "Cross-platform system cleanup CLI"
+            homepage "https://github.com/hebertcisco/oscleaner"
+            version "<VERSION>"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "<DARWIN_ARM_URL>"
+                sha256 "<DARWIN_ARM_SHA>"
+              else
+                url "<DARWIN_INTEL_URL>"
+                sha256 "<DARWIN_INTEL_SHA>"
+              end
+            end
+
+            on_linux do
+              url "<LINUX_URL>"
+              sha256 "<LINUX_SHA>"
+            end
+
+            def install
+              bin_name = if OS.mac?
+                Hardware::CPU.arm? ? "oscleaner-aarch64-apple-darwin" : "oscleaner-x86_64-apple-darwin"
+              else
+                "oscleaner-x86_64-unknown-linux-gnu"
+              end
+
+              bin.install bin_name => "oscleaner"
+            end
+
+            test do
+              output = shell_output("#{bin}/oscleaner --help")
+              assert_match "oscleaner", output
+            end
+          end
+          EOF
+
+          sed -i "s|<VERSION>|$VERSION|g" tap/Formula/oscleaner.rb
+          sed -i "s|<DARWIN_ARM_URL>|$DARWIN_ARM_URL|g" tap/Formula/oscleaner.rb
+          sed -i "s|<DARWIN_ARM_SHA>|$DARWIN_ARM_SHA|g" tap/Formula/oscleaner.rb
+          sed -i "s|<DARWIN_INTEL_URL>|$DARWIN_INTEL_URL|g" tap/Formula/oscleaner.rb
+          sed -i "s|<DARWIN_INTEL_SHA>|$DARWIN_INTEL_SHA|g" tap/Formula/oscleaner.rb
+          sed -i "s|<LINUX_URL>|$LINUX_URL|g" tap/Formula/oscleaner.rb
+          sed -i "s|<LINUX_SHA>|$LINUX_SHA|g" tap/Formula/oscleaner.rb
+
+      - name: Commit and push tap update
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
+        run: |
+          set -euo pipefail
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/oscleaner.rb
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Update oscleaner formula to v${{ needs.release.outputs.version }}"
+          git push origin HEAD
