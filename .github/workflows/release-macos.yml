@@ -145,14 +145,17 @@ jobs:
           )
 
           for key in "${!FILES[@]}"; do
-            file="artifacts/dist/${FILES[$key]}"
-            if [ ! -f "$file" ]; then
-              echo "::error::Missing expected artifact '$file'. Check the build outputs for the $key target." >&2
+            filename="${FILES[$key]}"
+            path=$(find artifacts -type f -name "$filename" -print -quit)
+            if [ -z "$path" ]; then
+              echo "::error::Missing expected artifact '$filename'. Check the build outputs for the $key target." >&2
+              echo "Artifacts found:"
+              find artifacts -type f | sed 's/^/  /'
               exit 1
             fi
 
-            sha=$(sha256sum "$file" | awk '{print $1}')
-            echo "${key}_url=$BASE_URL/${FILES[$key]}" >> "$GITHUB_OUTPUT"
+            sha=$(sha256sum "$path" | awk '{print $1}')
+            echo "${key}_url=$BASE_URL/$filename" >> "$GITHUB_OUTPUT"
             echo "${key}_sha=$sha" >> "$GITHUB_OUTPUT"
           done
 
