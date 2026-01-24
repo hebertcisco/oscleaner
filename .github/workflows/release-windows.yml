@@ -61,7 +61,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: oscleaner-windows
-          path: .
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          find artifacts -type f \( -name "*.zip" -o -name "*.exe" \) -exec cp {} release/ \;
 
       - name: Resolve release tag
         id: resolve_tag
@@ -81,9 +87,7 @@ jobs:
         with:
           tag_name: ${{ steps.resolve_tag.outputs.tag }}
           name: oscleaner ${{ steps.resolve_tag.outputs.tag }}
-          files: |
-            dist/**/*.zip
-            dist/**/*.exe
+          files: release/*
           generate_release_notes: true
           overwrite: true
         env:
