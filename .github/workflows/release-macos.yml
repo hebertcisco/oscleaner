@@ -324,10 +324,17 @@ jobs:
             exit 1
           fi
 
-          jq -s '{
-            root_url: .[0].formulae[0].bottle.root_url,
-            sha256: (reduce .[].formulae[0].bottle.sha256 as $item ({}; . * $item))
-          }' $jsons > bottle.json
+          jq -s '
+            def bottles: [ .[].formulae[0].bottle | select(.sha256 != null) ];
+            if (bottles | length) == 0 then
+              error("No bottle metadata found in artifacts")
+            else
+              {
+                root_url: (bottles[0].root_url // ""),
+                sha256: (reduce (bottles | map(.sha256))[] as $item ({}; . * $item))
+              }
+            end
+          ' $jsons > bottle.json
 
           root_url=$(jq -r '.root_url' bottle.json)
           echo "root_url=$root_url" >> "$GITHUB_OUTPUT"
