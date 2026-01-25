@@ -16,9 +16,40 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve_tag.outputs.tag }}
+      version: ${{ steps.resolve_tag.outputs.version }}
+      source_sha: ${{ steps.source_sha.outputs.source_sha }}
+    steps:
+      - name: Resolve release tag
+        id: resolve_tag
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="${{ inputs.version_tag }}"
+          fi
+          CLEAN="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$CLEAN" >> "$GITHUB_OUTPUT"
+
+      - name: Compute source tarball sha256
+        id: source_sha
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.resolve_tag.outputs.tag }}"
+          URL="https://github.com/${{ github.repository }}/archive/refs/tags/${TAG}.tar.gz"
+          curl -L "$URL" -o source.tar.gz
+          SHA="$(sha256sum source.tar.gz | awk '{print $1}')"
+          echo "source_sha=$SHA" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    needs: resolve
     strategy:
       fail-fast: false
       matrix:
@@ -49,10 +80,12 @@ jobs:
         run: |
           set -euo pipefail
           DIST="dist"
+          VERSION="${{ needs.resolve.outputs.version }}"
           BIN="target/${{ matrix.target }}/release/oscleaner"
+          BASE="oscleaner-v${VERSION}-${{ matrix.target }}"
           mkdir -p "$DIST"
-          cp "$BIN" "$DIST/oscleaner-${{ matrix.target }}"
-          tar -czf "$DIST/oscleaner-${{ matrix.target }}.tar.gz" -C "$DIST" "oscleaner-${{ matrix.target }}"
+          cp "$BIN" "$DIST/$BASE"
+          tar -czf "$DIST/$BASE.tar.gz" -C "$DIST" "$BASE"
 
       - name: Create DMG (macOS)
         if: runner.os == 'macOS'
@@ -60,10 +93,12 @@ jobs:
         run: |
           set -euo pipefail
           DIST="dist"
+          VERSION="${{ needs.resolve.outputs.version }}"
           DMG_ROOT="$DIST/dmg-root"
+          BASE="oscleaner-v${VERSION}-${{ matrix.target }}"
           mkdir -p "$DMG_ROOT"
           cp "target/${{ matrix.target }}/release/oscleaner" "$DMG_ROOT/oscleaner"
-          hdiutil create -volname "oscleaner" -srcfolder "$DMG_ROOT" -ov -format UDZO "$DIST/oscleaner-${{ matrix.target }}.dmg"
+          hdiutil create -volname "oscleaner" -srcfolder "$DMG_ROOT" -ov -format UDZO "$DIST/$BASE.dmg"
           rm -rf "$DMG_ROOT"
 
       - name: Upload artifacts
@@ -75,12 +110,14 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    needs: build
+    needs:
+      - resolve
+      - build
     permissions:
       contents: write
     outputs:
-      tag: ${{ steps.resolve_tag.outputs.tag }}
-      version: ${{ steps.resolve_tag.outputs.version }}
+      tag: ${{ needs.resolve.outputs.tag }}
+      version: ${{ needs.resolve.outputs.version }}
     steps:
       - name: Download built artifacts
         uses: actions/download-artifact@v4
@@ -93,34 +130,111 @@ jobs:
           mkdir -p release
           find artifacts -type f \( -name "*.tar.gz" -o -name "*.dmg" \) -exec cp {} release/ \;
 
-      - name: Resolve release tag
-        id: resolve_tag
-        run: |
-          set -euo pipefail
-          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
-            TAG="${GITHUB_REF_NAME}"
-          else
-            TAG="${{ inputs.version_tag }}"
-          fi
-          CLEAN="${TAG#v}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$CLEAN" >> "$GITHUB_OUTPUT"
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.resolve_tag.outputs.tag }}
-          name: oscleaner ${{ steps.resolve_tag.outputs.tag }}
+          tag_name: ${{ needs.resolve.outputs.tag }}
+          name: oscleaner ${{ needs.resolve.outputs.tag }}
           files: release/*
           generate_release_notes: true
           overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  bottle:
+    name: Build Homebrew bottle (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs:
+      - resolve
+      - release
+    if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-13
+          - macos-14
+    env:
+      TAG: ${{ needs.resolve.outputs.tag }}
+      VERSION: ${{ needs.resolve.outputs.version }}
+      SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Checkout tap repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.HOMEBREW_TAP }}
+          token: ${{ env.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Write formula for bottle build
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > tap/Formula/oscleaner.rb <<'EOF'
+          # typed: false
+          # frozen_string_literal: true
+
+          class Oscleaner < Formula
+            desc "Cross-platform system cleanup CLI"
+            homepage "https://github.com/hebertcisco/oscleaner"
+            url "https://github.com/hebertcisco/oscleaner/archive/refs/tags/TAG_PLACEHOLDER.tar.gz"
+            sha256 "SOURCE_SHA_PLACEHOLDER"
+            license "MIT"
+            head "https://github.com/hebertcisco/oscleaner.git", branch: "main"
+
+            depends_on "rust" => :build
+
+            def install
+              system "cargo", "install", *std_cargo_args(path: ".")
+            end
+
+            test do
+              output = shell_output("#{bin}/oscleaner --help")
+              assert_match "oscleaner", output
+            end
+          end
+          EOF
+
+          sed -i '' "s|TAG_PLACEHOLDER|${TAG}|g" tap/Formula/oscleaner.rb
+          sed -i '' "s|SOURCE_SHA_PLACEHOLDER|${SOURCE_SHA}|g" tap/Formula/oscleaner.rb
+
+      - name: Build bottle
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+          brew tap "${{ env.HOMEBREW_TAP }}" tap
+          brew install --build-bottle "${{ env.HOMEBREW_TAP }}/oscleaner"
+          brew bottle --json --root-url "$ROOT_URL" "${{ env.HOMEBREW_TAP }}/oscleaner"
+
+      - name: Upload bottle artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bottle-${{ matrix.os }}
+          path: |
+            *.bottle.json
+            *.bottle.tar.gz
+          if-no-files-found: error
+
+      - name: Upload bottles to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          files: |
+            *.bottle.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish-homebrew:
     name: Publish Homebrew tap
     runs-on: ubuntu-latest
-    needs: release
+    needs:
+      - resolve
+      - release
+      - bottle
     steps:
       - name: Download build artifacts for Homebrew
         if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
@@ -134,29 +248,44 @@ jobs:
         if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
         run: |
           set -euo pipefail
-          TAG="${{ needs.release.outputs.tag }}"
+          TAG="${{ needs.resolve.outputs.tag }}"
+          VERSION="${{ needs.resolve.outputs.version }}"
           BASE_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
 
-          declare -A FILES=(
-            [darwin_arm64]="oscleaner-aarch64-apple-darwin.tar.gz"
-            [darwin_intel]="oscleaner-x86_64-apple-darwin.tar.gz"
-            [linux_x86_64]="oscleaner-x86_64-unknown-linux-gnu.tar.gz"
-          )
+          filename="oscleaner-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          path=$(find artifacts -type f -name "$filename" -print -quit)
+          if [ -z "$path" ]; then
+            echo "::error::Missing expected artifact '$filename'." >&2
+            echo "Artifacts found:"
+            find artifacts -type f | sed 's/^/  /'
+            exit 1
+          fi
 
-          for key in "${!FILES[@]}"; do
-            filename="${FILES[$key]}"
-            path=$(find artifacts -type f -name "$filename" -print -quit)
-            if [ -z "$path" ]; then
-              echo "::error::Missing expected artifact '$filename'. Check the build outputs for the $key target." >&2
-              echo "Artifacts found:"
-              find artifacts -type f | sed 's/^/  /'
-              exit 1
-            fi
+          sha=$(sha256sum "$path" | awk '{print $1}')
+          echo "linux_url=$BASE_URL/$filename" >> "$GITHUB_OUTPUT"
+          echo "linux_sha=$sha" >> "$GITHUB_OUTPUT"
 
-            sha=$(sha256sum "$path" | awk '{print $1}')
-            echo "${key}_url=$BASE_URL/$filename" >> "$GITHUB_OUTPUT"
-            echo "${key}_sha=$sha" >> "$GITHUB_OUTPUT"
-          done
+      - name: Merge bottle metadata
+        id: bottle_meta
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
+        run: |
+          set -euo pipefail
+          jsons=$(find artifacts -type f -name "*.bottle.json")
+          if [ -z "$jsons" ]; then
+            echo "::error::Missing bottle json metadata." >&2
+            find artifacts -type f | sed 's/^/  /'
+            exit 1
+          fi
+
+          jq -s '{
+            root_url: .[0].formulae[0].bottle.root_url,
+            sha256: (reduce .[].formulae[0].bottle.sha256 as $item ({}; . * $item))
+          }' $jsons > bottle.json
+
+          root_url=$(jq -r '.root_url' bottle.json)
+          echo "root_url=$root_url" >> "$GITHUB_OUTPUT"
+
+          jq -r '.sha256 | to_entries[] | "\(.key)=\(.value)"' bottle.json | sort > bottle-sha.txt
 
       - name: Checkout tap repository
         if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
@@ -169,66 +298,58 @@ jobs:
       - name: Update formula in tap
         if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
         env:
-          DARWIN_ARM_URL: ${{ steps.brew_artifacts.outputs.darwin_arm64_url }}
-          DARWIN_ARM_SHA: ${{ steps.brew_artifacts.outputs.darwin_arm64_sha }}
-          DARWIN_INTEL_URL: ${{ steps.brew_artifacts.outputs.darwin_intel_url }}
-          DARWIN_INTEL_SHA: ${{ steps.brew_artifacts.outputs.darwin_intel_sha }}
-          LINUX_URL: ${{ steps.brew_artifacts.outputs.linux_x86_64_url }}
-          LINUX_SHA: ${{ steps.brew_artifacts.outputs.linux_x86_64_sha }}
+          SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
+          LINUX_URL: ${{ steps.brew_artifacts.outputs.linux_url }}
+          LINUX_SHA: ${{ steps.brew_artifacts.outputs.linux_sha }}
+          BOTTLE_ROOT_URL: ${{ steps.bottle_meta.outputs.root_url }}
         run: |
           set -euo pipefail
+          TAG="${{ needs.resolve.outputs.tag }}"
+          VERSION="${{ needs.resolve.outputs.version }}"
           mkdir -p tap/Formula
-          cat > tap/Formula/oscleaner.rb <<'EOF'
-          TAG="${{ needs.release.outputs.tag }}"
-          # typed: false
-          # frozen_string_literal: true
 
-          class Oscleaner < Formula
-            desc "Cross-platform system cleanup CLI"
-            homepage "https://github.com/hebertcisco/oscleaner"
-            url "https://github.com/hebertcisco/oscleaner/archive/refs/tags/${TAG}.tar.gz"
-            sha256 "<SOURCE_TAR_SHA256>"
-            license "MIT"
-            head "https://github.com/hebertcisco/oscleaner.git", branch: "main"
-
-            on_macos do
-              if Hardware::CPU.arm?
-                url "<DARWIN_ARM_URL>"
-                sha256 "<DARWIN_ARM_SHA>"
-              else
-                url "<DARWIN_INTEL_URL>"
-                sha256 "<DARWIN_INTEL_SHA>"
-              end
-            end
-
-            on_linux do
-              url "<LINUX_URL>"
-              sha256 "<LINUX_SHA>"
-            end
-
-            def install
-              bin_name = if OS.mac?
-                Hardware::CPU.arm? ? "oscleaner-aarch64-apple-darwin" : "oscleaner-x86_64-apple-darwin"
-              else
-                "oscleaner-x86_64-unknown-linux-gnu"
-              end
-
-              bin.install bin_name => "oscleaner"
-            end
-
-            test do
-              output = shell_output("#{bin}/oscleaner --help")
-              assert_match "oscleaner", output
-            end
-          end
-          EOF
-
-          sed -i "s|<DARWIN_ARM_URL>|$DARWIN_ARM_URL|g" tap/Formula/oscleaner.rb
-          sed -i "s|<DARWIN_ARM_SHA>|$DARWIN_ARM_SHA|g" tap/Formula/oscleaner.rb
-          sed -i "s|<DARWIN_INTEL_URL>|$DARWIN_INTEL_URL|g" tap/Formula/oscleaner.rb
-          sed -i "s|<DARWIN_INTEL_SHA>|$DARWIN_INTEL_SHA|g" tap/Formula/oscleaner.rb
-          sed -i "s|<LINUX_URL>|$LINUX_URL|g" tap/Formula/oscleaner.rb
-          sed -i "s|<LINUX_SHA>|$LINUX_SHA|g" tap/Formula/oscleaner.rb
+          {
+            echo "# typed: false"
+            echo "# frozen_string_literal: true"
+            echo
+            echo "class Oscleaner < Formula"
+            echo "  desc \"Cross-platform system cleanup CLI\""
+            echo "  homepage \"https://github.com/hebertcisco/oscleaner\""
+            echo "  url \"https://github.com/hebertcisco/oscleaner/archive/refs/tags/${TAG}.tar.gz\""
+            echo "  sha256 \"${SOURCE_SHA}\""
+            echo "  license \"MIT\""
+            echo "  head \"https://github.com/hebertcisco/oscleaner.git\", branch: \"main\""
+            echo
+            echo "  bottle do"
+            echo "    root_url \"${BOTTLE_ROOT_URL}\""
+            while IFS='=' read -r key value; do
+              echo "    sha256 cellar: :any_skip_relocation, ${key}: \"${value}\""
+            done < bottle-sha.txt
+            echo "  end"
+            echo
+            echo "  on_macos do"
+            echo "    depends_on \"rust\" => :build"
+            echo "  end"
+            echo
+            echo "  on_linux do"
+            echo "    url \"${LINUX_URL}\""
+            echo "    sha256 \"${LINUX_SHA}\""
+            echo "  end"
+            echo
+            echo "  def install"
+            echo "    if OS.mac?"
+            echo "      system \"cargo\", \"install\", *std_cargo_args(path: \".\")"
+            echo "    else"
+            echo "      bin.install \"oscleaner-v#{version}-x86_64-unknown-linux-gnu\" => \"oscleaner\""
+            echo "    end"
+            echo "  end"
+            echo
+            echo "  test do"
+            echo "    output = shell_output(\"#{bin}/oscleaner --help\")"
+            echo "    assert_match \"oscleaner\", output"
+            echo "  end"
+            echo "end"
+          } > tap/Formula/oscleaner.rb
 
       - name: Commit and push tap update
         if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
@@ -242,5 +363,5 @@ jobs:
             echo "No changes to commit."
             exit 0
           fi
-          git commit -m "Update oscleaner formula to v${{ needs.release.outputs.version }}"
+          git commit -m "Update oscleaner formula to v${{ needs.resolve.outputs.version }}"
           git push origin HEAD
