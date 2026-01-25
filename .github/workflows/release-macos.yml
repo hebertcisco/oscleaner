@@ -345,7 +345,11 @@ jobs:
               [ .. | objects | select(.files? != null)
                 | (.files | to_entries[] | {key: .key, value: .value.sha256})
               ];
-            def entries: (sha_entries + file_entries | map(select(.value != null)));
+            def tag_entries:
+              [ .. | objects | select(.tags? != null)
+                | (.tags | to_entries[] | {key: .key, value: .value.sha256})
+              ];
+            def entries: (sha_entries + file_entries + tag_entries | map(select(.value != null)));
             if (entries | length) == 0 then
               error("No bottle metadata found in artifacts")
             else
