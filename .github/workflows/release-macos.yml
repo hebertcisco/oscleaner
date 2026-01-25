@@ -156,7 +156,6 @@ jobs:
     env:
       TAG: ${{ needs.resolve.outputs.tag }}
       VERSION: ${{ needs.resolve.outputs.version }}
-      SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
     steps:
       - name: Check Homebrew tap configuration
         id: homebrew_gate
@@ -183,6 +182,18 @@ jobs:
             echo "Cannot access tap repo '${HOMEBREW_TAP}'; skipping bottle build."
           fi
 
+      - name: Compute source tarball sha256
+        id: source_sha
+        if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.resolve.outputs.tag }}"
+          URL="https://github.com/${{ github.repository }}/archive/refs/tags/${TAG}.tar.gz"
+          curl -L "$URL" -o source.tar.gz
+          SHA="$(shasum -a 256 source.tar.gz | awk '{print $1}')"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
       - name: Checkout source
         uses: actions/checkout@v4
         if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
@@ -198,6 +209,8 @@ jobs:
       - name: Write formula for bottle build
         if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
         shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.source_sha.outputs.sha }}
         run: |
           set -euo pipefail
           cat > tap/Formula/oscleaner.rb <<'EOF'
@@ -327,10 +340,21 @@ jobs:
           token: ${{ env.HOMEBREW_TAP_TOKEN }}
           path: tap
 
+      - name: Compute source tarball sha256
+        id: source_sha
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.resolve.outputs.tag }}"
+          URL="https://github.com/${{ github.repository }}/archive/refs/tags/${TAG}.tar.gz"
+          curl -L "$URL" -o source.tar.gz
+          SHA="$(sha256sum source.tar.gz | awk '{print $1}')"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
       - name: Update formula in tap
         if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
         env:
-          SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
+          SOURCE_SHA: ${{ steps.source_sha.outputs.sha }}
           LINUX_URL: ${{ steps.brew_artifacts.outputs.linux_url }}
           LINUX_SHA: ${{ steps.brew_artifacts.outputs.linux_sha }}
           BOTTLE_ROOT_URL: ${{ steps.bottle_meta.outputs.root_url }}
