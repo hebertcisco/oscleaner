@@ -137,7 +137,7 @@ jobs:
           name: oscleaner ${{ needs.resolve.outputs.tag }}
           files: release/*
           generate_release_notes: true
-          overwrite: true
+          overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -151,8 +151,8 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - macos-13
           - macos-14
+          - macos-15-intel
     env:
       TAG: ${{ needs.resolve.outputs.tag }}
       VERSION: ${{ needs.resolve.outputs.version }}
@@ -222,8 +222,8 @@ jobs:
           set -euo pipefail
           ROOT_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
           brew tap "${{ env.HOMEBREW_TAP }}" tap
-          brew install --build-bottle "${{ env.HOMEBREW_TAP }}/oscleaner"
-          brew bottle --json --root-url "$ROOT_URL" "${{ env.HOMEBREW_TAP }}/oscleaner"
+          brew install --build-bottle tap/Formula/oscleaner.rb
+          brew bottle --json --root-url "$ROOT_URL" tap/Formula/oscleaner.rb
 
       - name: Upload bottle artifacts
         if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
