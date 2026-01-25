@@ -235,8 +235,10 @@ jobs:
           set -euo pipefail
           ROOT_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
           brew tap "${{ env.HOMEBREW_TAP }}" ./tap
-          brew install --build-bottle ./tap/Formula/oscleaner.rb
-          brew bottle --json --root-url "$ROOT_URL" ./tap/Formula/oscleaner.rb
+          TAP_DIR="$(brew --repo "${{ env.HOMEBREW_TAP }}")"
+          cp ./tap/Formula/oscleaner.rb "$TAP_DIR/Formula/oscleaner.rb"
+          brew install --build-bottle "${{ env.HOMEBREW_TAP }}/oscleaner"
+          brew bottle --json --root-url "$ROOT_URL" "${{ env.HOMEBREW_TAP }}/oscleaner"
 
       - name: Upload bottle artifacts
         if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
