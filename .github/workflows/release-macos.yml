@@ -179,13 +179,17 @@ jobs:
           set -euo pipefail
           mkdir -p tap/Formula
           cat > tap/Formula/oscleaner.rb <<'EOF'
+          TAG="${{ needs.release.outputs.tag }}"
           # typed: false
           # frozen_string_literal: true
 
           class Oscleaner < Formula
             desc "Cross-platform system cleanup CLI"
             homepage "https://github.com/hebertcisco/oscleaner"
+            url "https://github.com/hebertcisco/oscleaner/archive/refs/tags/${TAG}.tar.gz"
+            sha256 "<SOURCE_TAR_SHA256>"
             license "MIT"
+            head "https://github.com/hebertcisco/oscleaner.git", branch: "main"
 
             on_macos do
               if Hardware::CPU.arm?
