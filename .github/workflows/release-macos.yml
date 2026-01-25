@@ -163,11 +163,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ -n "${HOMEBREW_TAP_TOKEN}" ] && [ -n "${HOMEBREW_TAP}" ]; then
+          if [ -z "${HOMEBREW_TAP_TOKEN}" ] || [ -z "${HOMEBREW_TAP}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "HOMEBREW_TAP/HOMEBREW_TAP_TOKEN not set; skipping bottle build."
+            exit 0
+          fi
+
+          if ! [[ "${HOMEBREW_TAP}" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "HOMEBREW_TAP must be in 'owner/repo' form; got '${HOMEBREW_TAP}'."
+            exit 0
+          fi
+
+          TAP_URL="https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${HOMEBREW_TAP}.git"
+          if git ls-remote --exit-code "$TAP_URL" > /dev/null 2>&1; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "HOMEBREW_TAP/HOMEBREW_TAP_TOKEN not set; skipping bottle build."
+            echo "Cannot access tap repo '${HOMEBREW_TAP}'; skipping bottle build."
           fi
 
       - name: Checkout source
