@@ -123,6 +123,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          if-no-files-found: error
 
       - name: Checkout source
         uses: actions/checkout@v4
@@ -133,6 +134,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ needs.resolve.outputs.tag }}"
+          mkdir -p artifacts
           mkdir -p release
           find artifacts -type f \( -name "*.tar.gz" -o -name "*.dmg" \) -exec cp {} release/ \;
           git archive --format=tar --prefix="oscleaner-${TAG}/" "${TAG}" | gzip -n > "release/oscleaner-${TAG}-source.tar.gz"
