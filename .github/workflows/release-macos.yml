@@ -147,7 +147,6 @@ jobs:
     needs:
       - resolve
       - release
-    if: ${{ env.HOMEBREW_TAP_TOKEN != '' && env.HOMEBREW_TAP != '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -159,17 +158,32 @@ jobs:
       VERSION: ${{ needs.resolve.outputs.version }}
       SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
     steps:
+      - name: Check Homebrew tap configuration
+        id: homebrew_gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${HOMEBREW_TAP_TOKEN}" ] && [ -n "${HOMEBREW_TAP}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "HOMEBREW_TAP/HOMEBREW_TAP_TOKEN not set; skipping bottle build."
+          fi
+
       - name: Checkout source
         uses: actions/checkout@v4
+        if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
 
       - name: Checkout tap repository
         uses: actions/checkout@v4
+        if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
         with:
           repository: ${{ env.HOMEBREW_TAP }}
           token: ${{ env.HOMEBREW_TAP_TOKEN }}
           path: tap
 
       - name: Write formula for bottle build
+        if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -202,6 +216,7 @@ jobs:
           sed -i '' "s|SOURCE_SHA_PLACEHOLDER|${SOURCE_SHA}|g" tap/Formula/oscleaner.rb
 
       - name: Build bottle
+        if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -211,6 +226,7 @@ jobs:
           brew bottle --json --root-url "$ROOT_URL" "${{ env.HOMEBREW_TAP }}/oscleaner"
 
       - name: Upload bottle artifacts
+        if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: bottle-${{ matrix.os }}
@@ -220,6 +236,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload bottles to GitHub release
+        if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
