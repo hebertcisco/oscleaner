@@ -124,11 +124,18 @@ jobs:
         with:
           path: artifacts
 
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Prepare release assets
         run: |
           set -euo pipefail
+          TAG="${{ needs.resolve.outputs.tag }}"
           mkdir -p release
           find artifacts -type f \( -name "*.tar.gz" -o -name "*.dmg" \) -exec cp {} release/ \;
+          git archive --format=tar --prefix="oscleaner-${TAG}/" "${TAG}" | gzip -n > "release/oscleaner-${TAG}-source.tar.gz"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -191,7 +198,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ needs.resolve.outputs.tag }}"
-          URL="https://github.com/${{ github.repository }}/archive/refs/tags/${TAG}.tar.gz"
+          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/oscleaner-${TAG}-source.tar.gz"
           curl -L "$URL" -o source.tar.gz
           SHA="$(shasum -a 256 source.tar.gz | awk '{print $1}')"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
@@ -222,7 +229,7 @@ jobs:
           class Oscleaner < Formula
             desc "Cross-platform system cleanup CLI"
             homepage "https://github.com/hebertcisco/oscleaner"
-            url "https://github.com/hebertcisco/oscleaner/archive/refs/tags/TAG_PLACEHOLDER.tar.gz"
+            url "https://github.com/hebertcisco/oscleaner/releases/download/TAG_PLACEHOLDER/oscleaner-TAG_PLACEHOLDER-source.tar.gz"
             sha256 "SOURCE_SHA_PLACEHOLDER"
             license "MIT"
             head "https://github.com/hebertcisco/oscleaner.git", branch: "main"
@@ -325,13 +332,19 @@ jobs:
           fi
 
           jq -s '
-            def bottles: [ .[].formulae[0].bottle | select(.sha256 != null) ];
-            if (bottles | length) == 0 then
+            def bottle_objs: [ .[].formulae[0].bottle | select(. != null) ];
+            def sha_map(b):
+              if (b.sha256 != null) then b.sha256
+              elif (b.files != null) then
+                (b.files | to_entries | reduce .[] as $e ({}; . + {($e.key): $e.value.sha256}))
+              else null end;
+            def sha_maps: [ bottle_objs[] | sha_map(.) | select(. != null) ];
+            if (sha_maps | length) == 0 then
               error("No bottle metadata found in artifacts")
             else
               {
-                root_url: (bottles[0].root_url // ""),
-                sha256: (reduce (bottles | map(.sha256))[] as $item ({}; . * $item))
+                root_url: (bottle_objs[0].root_url // ""),
+                sha256: (reduce sha_maps[] as $item ({}; . * $item))
               }
             end
           ' $jsons > bottle.json
@@ -355,7 +368,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ needs.resolve.outputs.tag }}"
-          URL="https://github.com/${{ github.repository }}/archive/refs/tags/${TAG}.tar.gz"
+          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/oscleaner-${TAG}-source.tar.gz"
           curl -L "$URL" -o source.tar.gz
           SHA="$(sha256sum source.tar.gz | awk '{print $1}')"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
@@ -380,7 +393,7 @@ jobs:
             echo "class Oscleaner < Formula"
             echo "  desc \"Cross-platform system cleanup CLI\""
             echo "  homepage \"https://github.com/hebertcisco/oscleaner\""
-            echo "  url \"https://github.com/hebertcisco/oscleaner/archive/refs/tags/${TAG}.tar.gz\""
+            echo "  url \"https://github.com/hebertcisco/oscleaner/releases/download/${TAG}/oscleaner-${TAG}-source.tar.gz\""
             echo "  sha256 \"${SOURCE_SHA}\""
             echo "  license \"MIT\""
             echo "  head \"https://github.com/hebertcisco/oscleaner.git\", branch: \"main\""
