@@ -147,6 +147,8 @@ jobs:
     needs:
       - resolve
       - release
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -264,7 +266,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload bottles to GitHub release
-        if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
+        if: ${{ steps.homebrew_gate.outputs.enabled == 'true' && env.TAG != '' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
