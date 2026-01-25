@@ -333,23 +333,25 @@ jobs:
           fi
 
           jq -s '
-            def bottle_entries:
-              [ .[] | .formulae[]? | ( .bottle? // .bottles? ) | select(. != null) ];
-            def sha_map(b):
-              if (b | type) == "array" then
-                reduce (b[] | sha_map(.)) as $item ({}; . * $item)
-              elif (b.sha256 != null) then b.sha256
-              elif (b.files != null) then
-                (b.files | to_entries | reduce .[] as $e ({}; . + {($e.key): $e.value.sha256}))
-              else null end;
-            def sha_maps: [ bottle_entries[] | sha_map(.) | select(. != null) ];
-            def root_urls: [ bottle_entries[] | .root_url? | select(. != null and . != "") ];
-            if (sha_maps | length) == 0 then
+            def root_urls:
+              [ .. | objects | .root_url? | select(type == "string" and . != "") ];
+            def sha_entries:
+              [ .. | objects | select(.sha256? != null)
+                | if (.sha256 | type) == "object" then
+                    (.sha256 | to_entries[] | {key: .key, value: .value})
+                  else empty end
+              ];
+            def file_entries:
+              [ .. | objects | select(.files? != null)
+                | (.files | to_entries[] | {key: .key, value: .value.sha256})
+              ];
+            def entries: (sha_entries + file_entries | map(select(.value != null)));
+            if (entries | length) == 0 then
               error("No bottle metadata found in artifacts")
             else
               {
                 root_url: (root_urls[0] // ""),
-                sha256: (reduce sha_maps[] as $item ({}; . * $item))
+                sha256: (reduce entries[] as $e ({}; . + {($e.key): $e.value}))
               }
             end
           ' $jsons > bottle.json
