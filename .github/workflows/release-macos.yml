@@ -163,6 +163,8 @@ jobs:
         os:
           - macos-14
           - macos-15-intel
+          - ubuntu-latest
+          - ubuntu-24.04-arm
     env:
       TAG: ${{ needs.resolve.outputs.tag }}
       VERSION: ${{ needs.resolve.outputs.version }}
@@ -191,6 +193,10 @@ jobs:
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             echo "Cannot access tap repo '${HOMEBREW_TAP}'; skipping bottle build."
           fi
+
+      - name: Set up Homebrew (Linux)
+        if: ${{ runner.os == 'Linux' && steps.homebrew_gate.outputs.enabled == 'true' }}
+        uses: Homebrew/actions/setup-homebrew@master
 
       - name: Compute source tarball sha256
         id: source_sha
@@ -248,8 +254,16 @@ jobs:
           end
           EOF
 
-          sed -i '' "s|TAG_PLACEHOLDER|${TAG}|g" tap/Formula/oscleaner.rb
-          sed -i '' "s|SOURCE_SHA_PLACEHOLDER|${SOURCE_SHA}|g" tap/Formula/oscleaner.rb
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          path = Path("tap/Formula/oscleaner.rb")
+          text = path.read_text()
+          text = text.replace("TAG_PLACEHOLDER", os.environ["TAG"])
+          text = text.replace("SOURCE_SHA_PLACEHOLDER", os.environ["SOURCE_SHA"])
+          path.write_text(text)
+          PY
 
       - name: Build bottle
         if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
@@ -410,7 +424,6 @@ jobs:
             echo "  head \"https://github.com/hebertcisco/oscleaner.git\", branch: \"main\""
             echo
             echo "  bottle do"
-            echo "    root_url \"${BOTTLE_ROOT_URL}\""
             while IFS='=' read -r key value; do
               echo "    sha256 cellar: :any_skip_relocation, ${key}: \"${value}\""
             done < bottle-sha.txt
