@@ -198,6 +198,17 @@ jobs:
         if: ${{ runner.os == 'Linux' && steps.homebrew_gate.outputs.enabled == 'true' }}
         uses: Homebrew/actions/setup-homebrew@master
 
+      - name: Fix Homebrew vendor bundle permissions (Linux)
+        if: ${{ runner.os == 'Linux' && steps.homebrew_gate.outputs.enabled == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BREW_REPO="$(brew --repo)"
+          BUNDLE_DIR="${BREW_REPO}/Library/Homebrew/vendor/bundle"
+          if [ -d "$BUNDLE_DIR" ]; then
+            chmod -R go-w "$BUNDLE_DIR"
+          fi
+
       - name: Compute source tarball sha256
         id: source_sha
         if: ${{ steps.homebrew_gate.outputs.enabled == 'true' }}
