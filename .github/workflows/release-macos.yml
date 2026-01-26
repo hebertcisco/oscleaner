@@ -206,7 +206,8 @@ jobs:
           BREW_REPO="$(brew --repo)"
           BUNDLE_DIR="${BREW_REPO}/Library/Homebrew/vendor/bundle"
           if [ -d "$BUNDLE_DIR" ]; then
-            chmod -R go-w "$BUNDLE_DIR"
+            sudo chmod +t "$BUNDLE_DIR"
+            find "$BUNDLE_DIR" -type d -path "*/gems" -print0 | xargs -0 sudo chmod +t
           fi
 
       - name: Compute source tarball sha256
