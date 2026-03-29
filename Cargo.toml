@@ -2,6 +2,14 @@
 name = "oscleaner"
 version = "1.0.0"
 edition = "2024"
+authors = ["Hebert Cisco <hebertcisco@outlook.com>"]
+description = "Cross-platform system cleanup CLI to free up disk space"
+repository = "https://github.com/hebertcisco/oscleaner"
+homepage = "https://github.com/hebertcisco/oscleaner"
+license = "MIT"
+readme = "README.md"
+keywords = ["cleanup", "disk-space", "system", "cli", "cache"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 anyhow = "1.0"
