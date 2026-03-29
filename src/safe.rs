@@ -9,44 +9,23 @@ use indicatif::HumanBytes;
 
 use crate::types::{CleanReport, Finding, OsKind};
 
-/// Categories that are safe to clean automatically.
-/// These are all regenerable caches and build artifacts.
 const SAFE_CATEGORY_IDS: &[&str] = &[
-    "node_modules",     // regenerable: npm install / yarn
-    "cargo_targets",    // regenerable: cargo build
-    "gradle_cache",     // regenerable: gradle sync
-    "maven_cache",      // regenerable: mvn install
-    "php_vendor",       // regenerable: composer install
-    "ruby_vendor",      // regenerable: bundle install
-    "python_cache",     // regenerable: __pycache__ auto-created
-    "cocoapods_cache",  // regenerable: pod install
-    "android_builds",   // regenerable: gradle build
-    "react_native_ios", // regenerable: pod install + xcodebuild
-    "xcode",            // regenerable: DerivedData rebuilt on next build
-    "homebrew_cache",   // regenerable: brew downloads
-    "browser_caches",   // regenerable: browsers re-download
-    "snap_cache",       // regenerable: snap re-downloads
-    "flatpak_cache",    // regenerable: flatpak re-downloads
+    "node_modules",
+    "cargo_targets",
+    "gradle_cache",
+    "maven_cache",
+    "php_vendor",
+    "ruby_vendor",
+    "python_cache",
+    "cocoapods_cache",
+    "android_builds",
+    "react_native_ios",
+    "xcode",
+    "homebrew_cache",
+    "browser_caches",
+    "snap_cache",
+    "flatpak_cache",
 ];
-
-// Categories excluded from safe mode:
-// docker           — could remove running containers/images in use
-// ios_backups      — irreplaceable device backups
-// mail_downloads   — may contain important attachments
-// mac_caches       — ~/Library/Caches is too broad, includes app state
-// mac_logs         — system/user logs needed for debugging
-// mac_tmp          — /tmp may contain files in use by running processes
-// windows_temp     — may contain files in use by running processes
-// windows_update   — system-critical update cache
-// windows_thumbnail — system UI cache
-// windows_prefetch — system performance data
-// windows_wer      — error reports useful for debugging
-// linux_cache      — ~/.cache is too broad, includes app state
-// linux_logs       — system logs needed for debugging
-// linux_tmp        — /tmp may contain files in use by running processes
-// linux_journal    — systemd logs needed for debugging
-// linux_coredumps  — useful for post-mortem debugging
-// linux_trash      — user may want to recover deleted files
 
 const DEFAULT_MAX_SIZE_GB: u64 = 20;
 const DEFAULT_MIN_AGE_DAYS: u64 = 2;
@@ -138,8 +117,6 @@ fn is_path_protected(path: &Path, protected: &[PathBuf]) -> bool {
     protected.iter().any(|p| path.starts_with(p))
 }
 
-/// Returns true if the path was last modified more than `min_age` ago.
-/// If metadata cannot be read, returns false (skip the item to be safe).
 fn is_old_enough(path: &Path, min_age: Duration) -> bool {
     let cutoff = match SystemTime::now().checked_sub(min_age) {
         Some(t) => t,
@@ -152,7 +129,6 @@ fn is_old_enough(path: &Path, min_age: Duration) -> bool {
         .unwrap_or(false)
 }
 
-/// Filter findings by safe mode rules. Returns (kept, skipped_reasons).
 pub fn filter_safe(findings: Vec<Finding>, config: &SafeConfig) -> (Vec<Finding>, Vec<String>) {
     let mut kept = Vec::new();
     let mut skipped = Vec::new();
@@ -180,7 +156,6 @@ pub fn filter_safe(findings: Vec<Finding>, config: &SafeConfig) -> (Vec<Finding>
     (kept, skipped)
 }
 
-/// Returns the total size if it exceeds the limit, or None if within bounds.
 pub fn exceeds_size_limit(findings: &[Finding], max_bytes: u64) -> Option<u64> {
     let total: u64 = findings.iter().map(|f| f.size).sum();
     if total > max_bytes {
@@ -190,7 +165,6 @@ pub fn exceeds_size_limit(findings: &[Finding], max_bytes: u64) -> Option<u64> {
     }
 }
 
-/// Append a safe run log entry to ~/.oscleaner/safe_run.log.
 pub fn write_safe_log(
     home: &Path,
     report: &CleanReport,
@@ -285,8 +259,6 @@ fn utc_timestamp() -> String {
     }
 }
 
-/// Civil date from days since 1970-01-01.
-/// Algorithm: <http://howardhinnant.github.io/date_algorithms.html>
 fn days_to_date(days_since_epoch: u64) -> (u64, u64, u64) {
     let z = days_since_epoch + 719468;
     let era = z / 146097;

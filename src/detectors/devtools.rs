@@ -184,7 +184,6 @@ pub fn detect_ruby_vendor(ctx: &ScanContext) -> Vec<PathBuf> {
             let name = entry.file_name();
             if name == "vendor" {
                 let p = entry.path();
-                // Ruby vendor: has bundle/ subdir or parent has Gemfile
                 let has_bundle = p.join("bundle").is_dir();
                 let parent_has_gemfile = p
                     .parent()

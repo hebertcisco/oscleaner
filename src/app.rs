@@ -97,7 +97,6 @@ fn run_clean_command(
         return Ok(());
     }
 
-    // In safe mode, apply age and protected-path filters
     let (findings, skipped_reasons) = if let Some(ref cfg) = safe_config {
         let (kept, skipped) = safe::filter_safe(findings, cfg);
         if !skipped.is_empty() {

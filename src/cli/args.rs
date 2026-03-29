@@ -167,7 +167,6 @@ impl CliOptions {
         }
     }
 
-    /// In safe mode, --yes is implicit.
     pub fn effective_yes(&self) -> bool {
         self.yes || self.safe
     }
