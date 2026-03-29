@@ -216,7 +216,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ needs.resolve.outputs.tag }}"
-          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/oscleaner-${TAG}-source.tar.gz"
+          URL="https://github.com/${{ github.repository }}/archive/refs/tags/${TAG}.tar.gz"
           curl -L "$URL" -o source.tar.gz
           SHA="$(shasum -a 256 source.tar.gz | awk '{print $1}')"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
@@ -403,7 +403,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ needs.resolve.outputs.tag }}"
-          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/oscleaner-${TAG}-source.tar.gz"
+          URL="https://github.com/${{ github.repository }}/archive/refs/tags/${TAG}.tar.gz"
           curl -L "$URL" -o source.tar.gz
           SHA="$(sha256sum source.tar.gz | awk '{print $1}')"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
