@@ -106,6 +106,59 @@ cargo install --path .
 
 If you supply category flags without a subcommand, `oscleaner` will default to running `clean` with those selections.
 
+### Safe mode (`--safe`)
+
+Safe mode is designed for unattended execution (e.g. cron jobs). It applies multiple layers of protection so you can schedule automatic cleanups without worrying about losing important data.
+
+```bash
+# Basic safe cleanup
+oscleaner --safe
+
+# Preview what would be deleted (no actual deletion)
+oscleaner --safe --dry-run
+
+# Custom limits: max 10 GB, only items older than 7 days
+oscleaner --safe --max-size 10 --min-age 7
+```
+
+**What safe mode does:**
+
+1. **Restricts categories** to only regenerable caches and build artifacts (15 out of 32):
+   `node_modules`, `cargo_targets`, `gradle_cache`, `maven_cache`, `php_vendor`, `ruby_vendor`, `python_cache`, `cocoapods_cache`, `android_builds`, `react_native_ios`, `xcode`, `homebrew_cache`, `browser_caches`, `snap_cache`, `flatpak_cache`.
+2. **Skips recent files** — only deletes items last modified more than N days ago (default: 2). Override with `--min-age <DAYS>`.
+3. **Enforces a size cap** — aborts if the total to be deleted exceeds N GB (default: 20). Override with `--max-size <GB>`.
+4. **Protects sensitive paths** — items inside personal directories (`~/Documents`, `~/Desktop`, `~/Downloads`, `~/.ssh`, `~/.gnupg`, `~/.config`, etc.) and system directories (`/System`, `/usr`, `/etc`, `/var`, etc.) are never touched.
+5. **Auto-confirms** — `--yes` is implied; no interactive prompts.
+6. **Writes a log** — every run appends to `~/.oscleaner/safe_run.log` with a full record of what was processed, skipped, and any errors.
+
+**Categories excluded from safe mode** (and why):
+
+| Category | Reason |
+|---|---|
+| `docker` | Could remove running containers or images in use |
+| `ios_backups` | Irreplaceable device backups |
+| `mail_downloads` | May contain important attachments |
+| `mac_caches` | Too broad — `~/Library/Caches` includes app state |
+| `mac_logs`, `linux_logs`, `linux_journal` | System logs needed for debugging |
+| `mac_tmp`, `linux_tmp`, `windows_temp` | May contain files in use by running processes |
+| `windows_update` | System-critical update cache |
+| `windows_prefetch` | System performance data |
+| `windows_wer` | Error reports useful for debugging |
+| `linux_coredumps` | Useful for post-mortem debugging |
+| `linux_trash` | User may want to recover deleted files |
+| `linux_cache` | Too broad — `~/.cache` includes app state |
+| `windows_thumbnail` | System UI cache |
+
+**Cron example:**
+
+```bash
+# Weekly cleanup every Sunday at 3 AM
+0 3 * * 0 /usr/local/bin/oscleaner --safe
+
+# Conservative: 10 GB limit, 7-day age, dry-run logged
+0 3 * * 0 /usr/local/bin/oscleaner --safe --max-size 10 --min-age 7 --dry-run
+```
+
 ## Building from Source
 
 1.  Clone the repository:
