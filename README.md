@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/hebertcisco/oscleaner/actions/workflows/ci.yml/badge.svg)](https://github.com/hebertcisco/oscleaner/actions/workflows/ci.yml)
 
-A cross-platform system cleanup CLI tool written in Rust to free up disk space by removing development and system artifacts. It works on both Windows and macOS.
+A cross-platform system cleanup CLI tool written in Rust to free up disk space by removing development and system artifacts. It works on Windows, macOS, and Linux.
 
 ## Core Functionality
 
@@ -27,6 +27,8 @@ A cross-platform system cleanup CLI tool written in Rust to free up disk space b
 -   **Maven:** Caches located at `~/.m2/repository`.
 -   **Rust:** `target/` directories in Cargo projects.
 -   **Python:** `__pycache__` directories, `.pyc` files, and virtual environments.
+-   **PHP:** `vendor` directories (Composer).
+-   **Ruby:** `vendor` directories (Bundler).
 -   **Browser Caches:** Chrome, Firefox, Safari, Edge, and Brave cache directories.
 
 ### System Caches (macOS)
@@ -48,6 +50,17 @@ A cross-platform system cleanup CLI tool written in Rust to free up disk space b
 -   **Prefetch Files:** `C:\Windows\Prefetch`.
 -   **Windows Error Reporting:** `%ProgramData%\Microsoft\Windows\WER`.
 
+### System Caches (Linux)
+
+-   **User Cache:** `~/.cache` directory.
+-   **System Logs:** User and system logs.
+-   **Temporary Files:** `/tmp` and `/var/tmp`.
+-   **Systemd Journal:** Systemd journal logs.
+-   **Core Dumps:** Core dump files.
+-   **XDG Trash:** `~/.local/share/Trash`.
+-   **Snap Cache:** Snap package caches.
+-   **Flatpak Cache:** Flatpak application caches.
+
 ## Installation
 
 ### Windows (Chocolatey)
@@ -64,16 +77,22 @@ Update to the latest version later with:
 choco upgrade oscleaner
 ```
 
-### macOS or Linux (Homebrew tap)
+### macOS or Linux (Homebrew)
 
 ```bash
 brew tap hebertcisco/homebrew-tap
-brew install hebertcisco/homebrew-tap/oscleaner
+brew install oscleaner
 ```
 
-### Cargo (from source)
+### Cargo (from crates.io or source)
 
-You can also build and install `oscleaner` locally with Cargo (after cloning this repo):
+Install the latest published version from crates.io:
+
+```bash
+cargo install oscleaner
+```
+
+Or build from a local clone:
 
 ```bash
 cargo install --path .
@@ -105,7 +124,7 @@ cargo install --path .
     -   `--min-age <DAYS>` — only delete items older than N days (default: 2 in safe mode).
     -   `--all` — include every category available on the current platform.
     -   `--category <id>` — target a category by id (repeatable).
-    -   Category shortcuts (use any combination): `--node-modules`, `--docker`, `--xcode`, `--android-builds`, `--react-native-ios`, `--gradle-cache`, `--maven-cache`, `--cargo-targets`, `--python-cache`, `--cocoapods-cache`, `--mac-caches`, `--mac-logs`, `--mac-tmp`, `--ios-backups`, `--homebrew-cache`, `--mail-downloads`, `--windows-temp`, `--windows-update`, `--windows-thumbnail`, `--windows-prefetch`, `--windows-wer`, `--browser-caches`.
+    -   Category shortcuts (use any combination): `--node-modules`, `--docker`, `--xcode`, `--android-builds`, `--react-native-ios`, `--gradle-cache`, `--maven-cache`, `--cargo-targets`, `--php-vendor`, `--ruby-vendor`, `--python-cache`, `--cocoapods-cache`, `--mac-caches`, `--mac-logs`, `--mac-tmp`, `--ios-backups`, `--homebrew-cache`, `--mail-downloads`, `--windows-temp`, `--windows-update`, `--windows-thumbnail`, `--windows-prefetch`, `--windows-wer`, `--browser-caches`, `--linux-cache`, `--linux-logs`, `--linux-tmp`, `--linux-journal`, `--linux-coredumps`, `--linux-trash`, `--snap-cache`, `--flatpak-cache`.
 
 If you supply category flags without a subcommand, `oscleaner` will default to running `clean` with those selections.
 
@@ -188,12 +207,22 @@ Contributions are welcome! Please feel free to submit a pull request.
 
 ## Release automation
 
-Tagged releases trigger `.github/workflows/release.yml`, which builds binaries
-for macOS (Apple Silicon and Intel), Linux, and Windows. Artifacts are uploaded
-to GitHub Releases and then consumed by the downstream package managers:
+Tagged releases (e.g. `v1.0.0`) trigger platform-specific workflows:
 
-- **Chocolatey and WinGet:** Publishing steps in the release workflow update
-  the Windows packages when the respective API keys are configured.
+- **macOS + Linux** (`.github/workflows/release-macos.yml`): Builds binaries for
+  macOS (Apple Silicon and Intel) and Linux x86_64, creates DMG installers,
+  packages source tarballs, builds Homebrew bottles, and publishes a GitHub
+  Release. The Homebrew tap (`hebertcisco/homebrew-tap`) is updated automatically
+  when `HOMEBREW_TAP_TOKEN` and `HOMEBREW_TAP` secrets are configured.
+
+- **Windows** (`.github/workflows/release-windows.yml`): Builds the Windows
+  binary, creates a ZIP archive, and optionally publishes to Chocolatey when
+  `CHOCO_API_KEY` is configured.
+
+- **Homebrew Core** (`homebrew-tap/.github/workflows/publish-core.yml`): When the
+  formula in the tap is updated, this workflow automatically opens a PR against
+  `Homebrew/homebrew-core` for inclusion in the official Homebrew repository.
+  Requires `HOMEBREW_GITHUB_API_TOKEN` in the tap repo secrets.
 
 ## License
 

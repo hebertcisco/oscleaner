@@ -59,4 +59,6 @@ The `--max-size <GB>` and `--min-age <DAYS>` flags allow overriding the defaults
 ## CI and releases
 
 - `.github/workflows/ci.yml` builds and tests on pushes and pull requests to `main` and `develop`.
-- `.github/workflows/release.yml` builds release binaries for Linux, Windows, and macOS on tags (or manual dispatch), packages artifacts (zip/tar.gz/dmg), and publishes a GitHub Release. Optional steps publish to WinGet, Chocolatey, and Homebrew when credentials are configured.
+- `.github/workflows/release-macos.yml` triggers on `v*` tags (or manual dispatch). It builds release binaries for macOS (aarch64 + x86_64) and Linux x86_64, creates DMG installers and source tarballs, publishes a GitHub Release, builds Homebrew bottles, and updates the `hebertcisco/homebrew-tap` formula. Requires `HOMEBREW_TAP_TOKEN` and `HOMEBREW_TAP` secrets.
+- `.github/workflows/release-windows.yml` triggers on `v*` tags (or manual dispatch). It builds the Windows MSVC binary, creates a ZIP archive, publishes to the GitHub Release, and optionally pushes to Chocolatey when `CHOCO_API_KEY` is configured.
+- `homebrew-tap/.github/workflows/publish-core.yml` runs when `Formula/*.rb` files are pushed to the tap's `main` branch. It validates the formula locally (`brew install --build-from-source`, `brew test`, `brew audit --new --strict`) and then opens a PR against `Homebrew/homebrew-core` via `brew bump-formula-pr`. For first-time submissions, it uses the `Formula/<name>.rb.core` template to bootstrap the PR. Requires `HOMEBREW_GITHUB_API_TOKEN` in the tap repo.
