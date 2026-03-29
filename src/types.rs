@@ -4,6 +4,8 @@ use std::path::PathBuf;
 pub enum OsKind {
     Windows,
     Mac,
+    Linux,
+    FreeBSD,
     Other,
 }
 
@@ -12,6 +14,8 @@ pub enum Platform {
     All,
     Windows,
     Mac,
+    Linux,
+    Unix,
 }
 
 impl Platform {
@@ -20,6 +24,8 @@ impl Platform {
             (Platform::All, _) => true,
             (Platform::Windows, OsKind::Windows) => true,
             (Platform::Mac, OsKind::Mac) => true,
+            (Platform::Linux, OsKind::Linux) => true,
+            (Platform::Unix, OsKind::Mac | OsKind::Linux | OsKind::FreeBSD) => true,
             _ => false,
         }
     }
@@ -61,14 +67,26 @@ mod tests {
     fn platform_matching_respects_os() {
         assert!(Platform::All.matches(OsKind::Windows));
         assert!(Platform::All.matches(OsKind::Mac));
+        assert!(Platform::All.matches(OsKind::Linux));
+        assert!(Platform::All.matches(OsKind::FreeBSD));
         assert!(Platform::All.matches(OsKind::Other));
 
         assert!(Platform::Windows.matches(OsKind::Windows));
         assert!(!Platform::Windows.matches(OsKind::Mac));
-        assert!(!Platform::Windows.matches(OsKind::Other));
+        assert!(!Platform::Windows.matches(OsKind::Linux));
 
         assert!(Platform::Mac.matches(OsKind::Mac));
         assert!(!Platform::Mac.matches(OsKind::Windows));
-        assert!(!Platform::Mac.matches(OsKind::Other));
+        assert!(!Platform::Mac.matches(OsKind::Linux));
+
+        assert!(Platform::Linux.matches(OsKind::Linux));
+        assert!(!Platform::Linux.matches(OsKind::Windows));
+        assert!(!Platform::Linux.matches(OsKind::Mac));
+
+        assert!(Platform::Unix.matches(OsKind::Mac));
+        assert!(Platform::Unix.matches(OsKind::Linux));
+        assert!(Platform::Unix.matches(OsKind::FreeBSD));
+        assert!(!Platform::Unix.matches(OsKind::Windows));
+        assert!(!Platform::Unix.matches(OsKind::Other));
     }
 }

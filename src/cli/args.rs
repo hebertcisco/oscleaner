@@ -109,6 +109,22 @@ pub struct CategoryFlags {
     pub windows_wer: bool,
     #[arg(long, help = "Browser caches (Chrome, Firefox, Edge, Brave, Safari)")]
     pub browser_caches: bool,
+    #[arg(long, help = "Linux user cache (~/.cache)")]
+    pub linux_cache: bool,
+    #[arg(long, help = "Linux system and user logs")]
+    pub linux_logs: bool,
+    #[arg(long, help = "Linux temporary files (/tmp, /var/tmp)")]
+    pub linux_tmp: bool,
+    #[arg(long, help = "Systemd journal logs")]
+    pub linux_journal: bool,
+    #[arg(long, help = "Linux core dumps")]
+    pub linux_coredumps: bool,
+    #[arg(long, help = "Linux XDG Trash")]
+    pub linux_trash: bool,
+    #[arg(long, help = "Snap package caches")]
+    pub snap_cache: bool,
+    #[arg(long, help = "Flatpak app caches")]
+    pub flatpak_cache: bool,
 }
 
 impl CliOptions {
@@ -198,6 +214,14 @@ impl CategoryFlags {
             || self.windows_prefetch
             || self.windows_wer
             || self.browser_caches
+            || self.linux_cache
+            || self.linux_logs
+            || self.linux_tmp
+            || self.linux_journal
+            || self.linux_coredumps
+            || self.linux_trash
+            || self.snap_cache
+            || self.flatpak_cache
     }
 
     pub fn to_ids(&self) -> HashSet<&'static str> {
@@ -273,6 +297,30 @@ impl CategoryFlags {
         }
         if self.browser_caches {
             ids.insert("browser_caches");
+        }
+        if self.linux_cache {
+            ids.insert("linux_cache");
+        }
+        if self.linux_logs {
+            ids.insert("linux_logs");
+        }
+        if self.linux_tmp {
+            ids.insert("linux_tmp");
+        }
+        if self.linux_journal {
+            ids.insert("linux_journal");
+        }
+        if self.linux_coredumps {
+            ids.insert("linux_coredumps");
+        }
+        if self.linux_trash {
+            ids.insert("linux_trash");
+        }
+        if self.snap_cache {
+            ids.insert("snap_cache");
+        }
+        if self.flatpak_cache {
+            ids.insert("flatpak_cache");
         }
         ids
     }

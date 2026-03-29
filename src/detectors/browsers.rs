@@ -39,6 +39,14 @@ pub fn detect_browser_caches(ctx: &ScanContext) -> Vec<PathBuf> {
                     .join("Library/Application Support/BraveSoftware/Brave-Browser/Default/Cache"),
             );
         }
+        OsKind::Linux | OsKind::FreeBSD => {
+            paths.push(ctx.home.join(".config/google-chrome/Default/Cache"));
+            paths.push(ctx.home.join(".config/google-chrome/Profile 1/Cache"));
+            paths.push(ctx.home.join(".config/chromium/Default/Cache"));
+            paths.push(ctx.home.join(".mozilla/firefox"));
+            paths.push(ctx.home.join(".config/BraveSoftware/Brave-Browser/Default/Cache"));
+            paths.push(ctx.home.join(".config/microsoft-edge/Default/Cache"));
+        }
         OsKind::Other => {}
     }
     paths.into_iter().filter(|p| p.exists()).collect()

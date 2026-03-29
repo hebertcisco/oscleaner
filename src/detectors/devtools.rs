@@ -28,6 +28,9 @@ pub fn detect_docker_data(ctx: &ScanContext) -> Vec<PathBuf> {
                 paths.push(local.join("Docker"));
             }
         }
+        OsKind::Linux | OsKind::FreeBSD => {
+            paths.push(PathBuf::from("/var/lib/docker"));
+        }
         OsKind::Other => {}
     }
 

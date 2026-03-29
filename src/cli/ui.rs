@@ -14,6 +14,8 @@ pub fn print_banner(ctx: &ScanContext) {
     let os_label = match ctx.os {
         OsKind::Windows => "Windows",
         OsKind::Mac => "macOS",
+        OsKind::Linux => "Linux",
+        OsKind::FreeBSD => "FreeBSD",
         OsKind::Other => "Other",
     };
     println!(
@@ -154,6 +156,8 @@ pub fn print_categories_table(categories: &[CleanupCategory]) {
             Platform::All => "all",
             Platform::Windows => "windows",
             Platform::Mac => "mac",
+            Platform::Linux => "linux",
+            Platform::Unix => "unix",
         };
         println!(
             "--{:<20} {:<8} {}",
