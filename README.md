@@ -100,6 +100,9 @@ cargo install --path .
 -   Global flags:
     -   `--dry-run` / `-n` — preview deletions without removing files.
     -   `--yes` / `-Y` — skip confirmations (for automation; be careful).
+    -   `--safe` — safe mode for unattended/cron execution (see [Safe mode](#safe-mode---safe) below).
+    -   `--max-size <GB>` — maximum total GB to delete (default: 20 in safe mode).
+    -   `--min-age <DAYS>` — only delete items older than N days (default: 2 in safe mode).
     -   `--all` — include every category available on the current platform.
     -   `--category <id>` — target a category by id (repeatable).
     -   Category shortcuts (use any combination): `--node-modules`, `--docker`, `--xcode`, `--android-builds`, `--react-native-ios`, `--gradle-cache`, `--maven-cache`, `--cargo-targets`, `--python-cache`, `--cocoapods-cache`, `--mac-caches`, `--mac-logs`, `--mac-tmp`, `--ios-backups`, `--homebrew-cache`, `--mail-downloads`, `--windows-temp`, `--windows-update`, `--windows-thumbnail`, `--windows-prefetch`, `--windows-wer`, `--browser-caches`.
