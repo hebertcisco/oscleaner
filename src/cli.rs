@@ -14,10 +14,43 @@ use crate::types::{CategorySummary, OsKind, Platform};
 #[derive(Parser, Debug, Default)]
 #[command(name = "oscleaner", version, about = "Scan, preview, and clean development/system clutter")]
 pub struct CliOptions {
-    #[arg(short = 'n', long = "dry-run", help = "Preview deletions without removing files")]
+    #[arg(
+        short = 'n',
+        long = "dry-run",
+        global = true,
+        help = "Preview deletions without removing files"
+    )]
     pub dry_run: bool,
-    #[arg(short = 'Y', long = "yes", help = "Skip interactive confirmations and proceed directly")]
+    #[arg(
+        short = 'Y',
+        long = "yes",
+        global = true,
+        help = "Skip interactive confirmations and proceed directly"
+    )]
     pub yes: bool,
+    #[command(flatten)]
+    pub targets: TargetArgs,
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+#[derive(Subcommand, Debug, Clone, PartialEq, Eq)]
+pub enum Command {
+    Scan(TargetArgs),
+    Clean(TargetArgs),
+    List,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RunMode {
+    Interactive,
+    Scan,
+    Clean,
+    List,
+}
+
+#[derive(Args, Debug, Default, Clone, PartialEq, Eq)]
+pub struct TargetArgs {
     #[arg(long = "all", help = "Target every available category")]
     pub all: bool,
     #[arg(
@@ -30,26 +63,9 @@ pub struct CliOptions {
     pub categories: Vec<String>,
     #[command(flatten)]
     pub category_flags: CategoryFlags,
-    #[command(subcommand)]
-    pub command: Option<Command>,
 }
 
-#[derive(Subcommand, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Command {
-    Scan,
-    Clean,
-    List,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RunMode {
-    Interactive,
-    Scan,
-    Clean,
-    List,
-}
-
-#[derive(Args, Debug, Default, Clone)]
+#[derive(Args, Debug, Default, Clone, PartialEq, Eq)]
 pub struct CategoryFlags {
     #[arg(long, help = "Node.js node_modules folders")]
     pub node_modules: bool,
@@ -103,12 +119,15 @@ impl CliOptions {
     }
 
     pub fn mode(&self) -> RunMode {
-        match self.command {
-            Some(Command::Scan) => RunMode::Scan,
-            Some(Command::Clean) => RunMode::Clean,
+        match &self.command {
+            Some(Command::Scan(_)) => RunMode::Scan,
+            Some(Command::Clean(_)) => RunMode::Clean,
             Some(Command::List) => RunMode::List,
             None => {
-                if self.all || self.category_flags.has_any() || !self.categories.is_empty() {
+                if self.targets.all
+                    || self.targets.category_flags.has_any()
+                    || !self.targets.categories.is_empty()
+                {
                     RunMode::Clean
                 } else {
                     RunMode::Interactive
@@ -117,14 +136,22 @@ impl CliOptions {
         }
     }
 
+    pub fn targets(&self) -> &TargetArgs {
+        match &self.command {
+            Some(Command::Scan(targets)) | Some(Command::Clean(targets)) => targets,
+            Some(Command::List) | None => &self.targets,
+        }
+    }
+
     pub fn resolve_category_ids(
         &self,
         available: &[CleanupCategory],
     ) -> Result<HashSet<&'static str>> {
-        let mut ids = self.category_flags.to_ids();
+        let targets = self.targets();
+        let mut ids = targets.category_flags.to_ids();
         let available_ids: HashSet<&'static str> = available.iter().map(|c| c.id).collect();
 
-        for name in &self.categories {
+        for name in &targets.categories {
             let normalized = name.replace('-', "_").to_lowercase();
             if let Some(found) = available_ids
                 .iter()
@@ -139,7 +166,7 @@ impl CliOptions {
             }
         }
 
-        if self.all {
+        if targets.all {
             ids.extend(available_ids.into_iter());
         }
 
@@ -363,5 +390,38 @@ pub fn print_categories_table(categories: &[CleanupCategory]) {
             platform,
             cat.description
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CliOptions, Command, RunMode};
+    use clap::Parser;
+
+    #[test]
+    fn clean_subcommand_accepts_category_flags_after_subcommand() {
+        let opts = CliOptions::parse_from([
+            "oscleaner",
+            "clean",
+            "--xcode",
+            "--android-builds",
+            "--dry-run",
+        ]);
+
+        assert_eq!(opts.mode(), RunMode::Clean);
+        assert!(opts.dry_run);
+        assert!(matches!(opts.command, Some(Command::Clean(_))));
+        assert!(opts.targets().category_flags.xcode);
+        assert!(opts.targets().category_flags.android_builds);
+    }
+
+    #[test]
+    fn top_level_category_flags_still_default_to_clean_mode() {
+        let opts = CliOptions::parse_from(["oscleaner", "--node-modules", "--cargo-targets"]);
+
+        assert_eq!(opts.mode(), RunMode::Clean);
+        assert!(opts.command.is_none());
+        assert!(opts.targets().category_flags.node_modules);
+        assert!(opts.targets().category_flags.cargo_targets);
     }
 }

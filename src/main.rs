@@ -38,7 +38,7 @@ fn main() -> Result<()> {
             print_categories_table(&categories);
         }
         RunMode::Scan => {
-            run_scan_command(&categories, &ctx, &requested_ids, opts.all)?;
+            run_scan_command(&categories, &ctx, &requested_ids, opts.targets().all)?;
         }
         RunMode::Clean => {
             run_clean_command(&categories, &ctx, &requested_ids, &opts)?;
@@ -83,7 +83,8 @@ fn run_clean_command(
     requested_ids: &HashSet<&'static str>,
     opts: &CliOptions,
 ) -> Result<()> {
-    let categories_to_scan = pick_categories(categories, requested_ids, opts.all);
+    let targets = opts.targets();
+    let categories_to_scan = pick_categories(categories, requested_ids, targets.all);
     let (findings, scan_duration) = run_scan(&categories_to_scan, ctx)?;
 
     if findings.is_empty() {
@@ -98,7 +99,7 @@ fn run_clean_command(
     show_summary(&summaries, scan_duration);
 
     let mut selected_ids = requested_ids.clone();
-    if selected_ids.is_empty() && (opts.all || opts.yes) {
+    if selected_ids.is_empty() && (targets.all || opts.yes) {
         selected_ids.extend(summaries.iter().map(|s| s.id));
     } else if selected_ids.is_empty() {
         selected_ids = prompt_category_selection(&summaries)?;
