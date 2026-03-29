@@ -247,7 +247,7 @@ jobs:
           class Oscleaner < Formula
             desc "Cross-platform system cleanup CLI"
             homepage "https://github.com/hebertcisco/oscleaner"
-            url "https://github.com/hebertcisco/oscleaner/releases/download/TAG_PLACEHOLDER/oscleaner-TAG_PLACEHOLDER-source.tar.gz"
+            url "https://github.com/hebertcisco/oscleaner/archive/refs/tags/TAG_PLACEHOLDER.tar.gz"
             sha256 "SOURCE_SHA_PLACEHOLDER"
             license "MIT"
             head "https://github.com/hebertcisco/oscleaner.git", branch: "main"
@@ -255,12 +255,11 @@ jobs:
             depends_on "rust" => :build
 
             def install
-              system "cargo", "install", *std_cargo_args(path: ".")
+              system "cargo", "install", *std_cargo_args
             end
 
             test do
-              output = shell_output("#{bin}/oscleaner --help")
-              assert_match "oscleaner", output
+              assert_match "oscleaner", shell_output("#{bin}/oscleaner --help")
             end
           end
           EOF
@@ -429,37 +428,27 @@ jobs:
             echo "class Oscleaner < Formula"
             echo "  desc \"Cross-platform system cleanup CLI\""
             echo "  homepage \"https://github.com/hebertcisco/oscleaner\""
-            echo "  url \"https://github.com/hebertcisco/oscleaner/releases/download/${TAG}/oscleaner-${TAG}-source.tar.gz\""
+            echo "  url \"https://github.com/hebertcisco/oscleaner/archive/refs/tags/${TAG}.tar.gz\""
             echo "  sha256 \"${SOURCE_SHA}\""
             echo "  license \"MIT\""
             echo "  head \"https://github.com/hebertcisco/oscleaner.git\", branch: \"main\""
             echo
-            echo "  bottle do"
-            while IFS='=' read -r key value; do
-              echo "    sha256 cellar: :any_skip_relocation, ${key}: \"${value}\""
-            done < bottle-sha.txt
-            echo "  end"
-            echo
-            echo "  on_macos do"
-            echo "    depends_on \"rust\" => :build"
-            echo "  end"
-            echo
-            echo "  on_linux do"
-            echo "    url \"${LINUX_URL}\""
-            echo "    sha256 \"${LINUX_SHA}\""
-            echo "  end"
+            if [ -s bottle-sha.txt ]; then
+              echo "  bottle do"
+              while IFS='=' read -r key value; do
+                printf "    sha256 cellar: :any_skip_relocation, %-12s \"%s\"\n" "${key}:" "${value}"
+              done < bottle-sha.txt
+              echo "  end"
+              echo
+            fi
+            echo "  depends_on \"rust\" => :build"
             echo
             echo "  def install"
-            echo "    if OS.mac?"
-            echo "      system \"cargo\", \"install\", *std_cargo_args(path: \".\")"
-            echo "    else"
-            echo "      bin.install \"oscleaner-v#{version}-x86_64-unknown-linux-gnu\" => \"oscleaner\""
-            echo "    end"
+            echo "    system \"cargo\", \"install\", *std_cargo_args"
             echo "  end"
             echo
             echo "  test do"
-            echo "    output = shell_output(\"#{bin}/oscleaner --help\")"
-            echo "    assert_match \"oscleaner\", output"
+            echo "    assert_match \"oscleaner\", shell_output(\"#{bin}/oscleaner --help\")"
             echo "  end"
             echo "end"
           } > tap/Formula/oscleaner.rb
