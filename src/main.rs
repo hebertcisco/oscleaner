@@ -18,7 +18,8 @@ use crate::categories::{build_categories, CleanupCategory};
 use crate::cleanup::{perform_cleanup, print_report};
 use crate::cli::{
     confirm_cleanup, confirm_dry_run, print_banner, print_categories_table,
-    prompt_category_selection, prompt_main_action, show_summary, CliOptions, RunMode,
+    prompt_category_selection, prompt_item_selection, prompt_main_action, show_summary, CliOptions,
+    RunMode,
 };
 use crate::context::ScanContext;
 use crate::scanner::{filter_findings, scan_categories, summarize_findings};
@@ -116,11 +117,27 @@ fn run_clean_command(
         return Ok(());
     }
 
+    let final_items: Vec<&Finding>;
+    let final_bytes: u64;
+
+    if !opts.yes {
+        let chosen = prompt_item_selection(&selected_items)?;
+        if chosen.is_empty() {
+            println!("{}", style("No items selected. Exiting.").yellow());
+            return Ok(());
+        }
+        final_bytes = chosen.iter().map(|f| f.size).sum();
+        final_items = chosen;
+    } else {
+        final_bytes = potential_bytes;
+        final_items = selected_items;
+    }
+
     println!(
         "{} {} across {} items will be removed.",
         style("Potential reclaim:").bold(),
-        style(HumanBytes(potential_bytes)).yellow().bold(),
-        selected_items.len()
+        style(HumanBytes(final_bytes)).yellow().bold(),
+        final_items.len()
     );
 
     let mut dry_run = opts.dry_run;
@@ -129,14 +146,14 @@ fn run_clean_command(
     }
 
     if !dry_run && !opts.yes {
-        let proceed = confirm_cleanup(potential_bytes)?;
+        let proceed = confirm_cleanup(final_bytes)?;
         if !proceed {
             println!("{}", style("Cancelled by user.").yellow());
             return Ok(());
         }
     }
 
-    let report = perform_cleanup(&selected_items, dry_run);
+    let report = perform_cleanup(&final_items, dry_run);
     print_report(&report);
     Ok(())
 }
@@ -169,12 +186,24 @@ fn run_interactive_flow(
         return Ok(());
     }
 
-    let (selected_items, potential_bytes) = filter_findings(&findings, &selected_ids);
+    let (selected_items, _potential_bytes) = filter_findings(&findings, &selected_ids);
+    if selected_items.is_empty() {
+        println!("{}", style("No matching targets to clean.").yellow());
+        return Ok(());
+    }
+
+    let chosen = prompt_item_selection(&selected_items)?;
+    if chosen.is_empty() {
+        println!("{}", style("No items selected. Exiting.").yellow());
+        return Ok(());
+    }
+    let final_bytes: u64 = chosen.iter().map(|f| f.size).sum();
+
     println!(
         "{} {} across {} items will be removed.",
         style("Potential reclaim:").bold(),
-        style(HumanBytes(potential_bytes)).yellow().bold(),
-        selected_items.len()
+        style(HumanBytes(final_bytes)).yellow().bold(),
+        chosen.len()
     );
 
     let mut dry_run = opts.dry_run;
@@ -182,14 +211,14 @@ fn run_interactive_flow(
         dry_run = confirm_dry_run(false)?;
     }
     if !dry_run {
-        let proceed = confirm_cleanup(potential_bytes)?;
+        let proceed = confirm_cleanup(final_bytes)?;
         if !proceed {
             println!("{}", style("Cancelled by user.").yellow());
             return Ok(());
         }
     }
 
-    let report = perform_cleanup(&selected_items, dry_run);
+    let report = perform_cleanup(&chosen, dry_run);
     print_report(&report);
     Ok(())
 }

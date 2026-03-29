@@ -9,7 +9,7 @@ use indicatif::HumanBytes;
 
 use crate::categories::CleanupCategory;
 use crate::context::ScanContext;
-use crate::types::{CategorySummary, OsKind, Platform};
+use crate::types::{CategorySummary, Finding, OsKind, Platform};
 
 #[derive(Parser, Debug, Default)]
 #[command(name = "oscleaner", version, about = "Scan, preview, and clean development/system clutter")]
@@ -83,6 +83,10 @@ pub struct CategoryFlags {
     pub maven_cache: bool,
     #[arg(long, help = "Cargo target directories")]
     pub cargo_targets: bool,
+    #[arg(long, help = "PHP vendor directories (Composer)")]
+    pub php_vendor: bool,
+    #[arg(long, help = "Ruby vendor directories (Bundler)")]
+    pub ruby_vendor: bool,
     #[arg(long, help = "Python __pycache__, pyc files, and virtualenvs")]
     pub python_cache: bool,
     #[arg(long, help = "CocoaPods cache (macOS)")]
@@ -184,6 +188,8 @@ impl CategoryFlags {
             || self.gradle_cache
             || self.maven_cache
             || self.cargo_targets
+            || self.php_vendor
+            || self.ruby_vendor
             || self.python_cache
             || self.cocoapods_cache
             || self.mac_caches
@@ -225,6 +231,12 @@ impl CategoryFlags {
         }
         if self.cargo_targets {
             ids.insert("cargo_targets");
+        }
+        if self.php_vendor {
+            ids.insert("php_vendor");
+        }
+        if self.ruby_vendor {
+            ids.insert("ruby_vendor");
         }
         if self.python_cache {
             ids.insert("python_cache");
@@ -347,6 +359,39 @@ pub fn prompt_category_selection(summaries: &[CategorySummary]) -> Result<HashSe
         }
     }
     Ok(ids)
+}
+
+pub fn prompt_item_selection<'a>(items: &'a [&'a Finding]) -> Result<Vec<&'a Finding>> {
+    let options = vec!["Delete all", "Select one by one"];
+    let choice = Select::new()
+        .with_prompt("How do you want to proceed?")
+        .items(&options)
+        .default(0)
+        .interact()?;
+
+    if choice == 0 {
+        return Ok(items.to_vec());
+    }
+
+    let labels: Vec<String> = items
+        .iter()
+        .map(|f| {
+            format!(
+                "[{}] {} ({})",
+                f.category_name,
+                f.path.display(),
+                HumanBytes(f.size)
+            )
+        })
+        .collect();
+    let defaults: Vec<bool> = items.iter().map(|_| true).collect();
+    let selections = MultiSelect::new()
+        .with_prompt("Select items to delete")
+        .items(&labels)
+        .defaults(&defaults)
+        .interact()?;
+
+    Ok(selections.into_iter().filter_map(|i| items.get(i).copied()).collect())
 }
 
 pub fn confirm_dry_run(force_dry_run: bool) -> Result<bool> {

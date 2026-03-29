@@ -72,6 +72,20 @@ pub fn build_categories() -> Vec<CleanupCategory> {
             detector: detect_cargo_targets,
         },
         CleanupCategory {
+            id: "php_vendor",
+            name: "PHP vendor dirs",
+            description: "vendor/ directories from PHP/Composer projects",
+            platform: Platform::All,
+            detector: detect_php_vendor,
+        },
+        CleanupCategory {
+            id: "ruby_vendor",
+            name: "Ruby vendor dirs",
+            description: "vendor/ directories from Ruby/Bundler projects",
+            platform: Platform::All,
+            detector: detect_ruby_vendor,
+        },
+        CleanupCategory {
             id: "python_cache",
             name: "Python __pycache__ and venvs",
             description: "__pycache__, .pyc, and virtual environment folders",

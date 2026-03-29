@@ -127,7 +127,82 @@ pub fn detect_maven_cache(ctx: &ScanContext) -> Vec<PathBuf> {
 }
 
 pub fn detect_cargo_targets(ctx: &ScanContext) -> Vec<PathBuf> {
-    search_for_dir(&ctx.search_roots, "target", 4)
+    let mut hits = Vec::new();
+    for root in &ctx.search_roots {
+        if !root.exists() {
+            continue;
+        }
+        for entry in WalkDir::new(root)
+            .max_depth(4)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_dir())
+        {
+            if entry.file_name() == "target" {
+                let p = entry.path();
+                let has_rustc_info = p.join(".rustc_info.json").exists();
+                let has_cargo_lock = p.join("debug/.cargo-lock").exists();
+                if has_rustc_info || has_cargo_lock {
+                    hits.push(p.to_path_buf());
+                }
+            }
+        }
+    }
+    hits
+}
+
+pub fn detect_php_vendor(ctx: &ScanContext) -> Vec<PathBuf> {
+    let mut hits = Vec::new();
+    for root in &ctx.search_roots {
+        if !root.exists() {
+            continue;
+        }
+        for entry in WalkDir::new(root)
+            .max_depth(5)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_dir())
+        {
+            let name = entry.file_name();
+            if name == "vendor" {
+                let p = entry.path();
+                if p.join("autoload.php").exists() {
+                    hits.push(p.to_path_buf());
+                }
+            }
+        }
+    }
+    hits
+}
+
+pub fn detect_ruby_vendor(ctx: &ScanContext) -> Vec<PathBuf> {
+    let mut hits = Vec::new();
+    for root in &ctx.search_roots {
+        if !root.exists() {
+            continue;
+        }
+        for entry in WalkDir::new(root)
+            .max_depth(5)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_dir())
+        {
+            let name = entry.file_name();
+            if name == "vendor" {
+                let p = entry.path();
+                // Ruby vendor: has bundle/ subdir or parent has Gemfile
+                let has_bundle = p.join("bundle").is_dir();
+                let parent_has_gemfile = p
+                    .parent()
+                    .map(|parent| parent.join("Gemfile").exists())
+                    .unwrap_or(false);
+                if has_bundle || parent_has_gemfile {
+                    hits.push(p.to_path_buf());
+                }
+            }
+        }
+    }
+    hits
 }
 
 pub fn detect_python_artifacts(ctx: &ScanContext) -> Vec<PathBuf> {
