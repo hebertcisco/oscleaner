@@ -3,32 +3,47 @@ use std::path::{Path, PathBuf};
 
 use walkdir::{DirEntry, WalkDir};
 
+const SKIPPABLE_DIRS: &[&str] = &[
+    ".git",
+    ".idea",
+    ".vscode",
+    ".npm",
+    ".pyenv",
+    ".rbenv",
+    ".nvm",
+    ".oh-my-zsh",
+    "target",
+];
+
 pub fn is_skippable(entry: &DirEntry) -> bool {
     let name = entry.file_name().to_string_lossy();
-    matches!(name.as_ref(), ".git" | ".idea" | ".vscode" | "target")
+    SKIPPABLE_DIRS.contains(&name.as_ref())
 }
 
-pub fn search_for_dir(roots: &[PathBuf], name: &str, max_depth: usize) -> Vec<PathBuf> {
-    let mut hits = Vec::new();
+pub fn walk_roots(roots: &[PathBuf], max_depth: usize) -> Vec<DirEntry> {
+    let mut entries = Vec::new();
     for root in roots {
         if !root.exists() {
             continue;
         }
-        for entry in WalkDir::new(root)
+        let walker = WalkDir::new(root)
             .max_depth(max_depth)
             .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| e.file_type().is_dir())
-        {
-            if is_skippable(&entry) {
-                continue;
-            }
-            if entry.file_name() == name {
-                hits.push(entry.path().to_path_buf());
-            }
+            .filter_entry(|e| !is_skippable(e));
+
+        for entry in walker.filter_map(|e| e.ok()) {
+            entries.push(entry);
         }
     }
-    hits
+    entries
+}
+
+pub fn search_for_dir(roots: &[PathBuf], name: &str, max_depth: usize) -> Vec<PathBuf> {
+    walk_roots(roots, max_depth)
+        .into_iter()
+        .filter(|e| e.file_type().is_dir() && e.file_name() == name)
+        .map(|e| e.path().to_path_buf())
+        .collect()
 }
 
 pub fn calc_size(path: &Path) -> io::Result<u64> {
@@ -37,15 +52,11 @@ pub fn calc_size(path: &Path) -> io::Result<u64> {
     }
 
     let mut size = 0u64;
-    for entry in WalkDir::new(path).follow_links(false).into_iter() {
-        let entry = match entry {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-        if entry.file_type().is_file() {
-            if let Ok(meta) = entry.metadata() {
-                size = size.saturating_add(meta.len());
-            }
+    for entry in WalkDir::new(path).follow_links(false).into_iter().flatten() {
+        if entry.file_type().is_file()
+            && let Ok(meta) = entry.metadata()
+        {
+            size = size.saturating_add(meta.len());
         }
     }
     Ok(size)

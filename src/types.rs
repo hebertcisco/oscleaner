@@ -4,24 +4,31 @@ use std::path::PathBuf;
 pub enum OsKind {
     Windows,
     Mac,
+    Linux,
+    FreeBSD,
     Other,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum Platform {
     All,
     Windows,
     Mac,
+    Linux,
+    Unix,
 }
 
 impl Platform {
     pub fn matches(self, os: OsKind) -> bool {
-        match (self, os) {
-            (Platform::All, _) => true,
-            (Platform::Windows, OsKind::Windows) => true,
-            (Platform::Mac, OsKind::Mac) => true,
-            _ => false,
-        }
+        matches!(
+            (self, os),
+            (Self::All, _)
+                | (Self::Windows, OsKind::Windows)
+                | (Self::Mac, OsKind::Mac)
+                | (Self::Linux, OsKind::Linux)
+                | (Self::Unix, OsKind::Mac | OsKind::Linux | OsKind::FreeBSD)
+        )
     }
 }
 
@@ -61,14 +68,26 @@ mod tests {
     fn platform_matching_respects_os() {
         assert!(Platform::All.matches(OsKind::Windows));
         assert!(Platform::All.matches(OsKind::Mac));
+        assert!(Platform::All.matches(OsKind::Linux));
+        assert!(Platform::All.matches(OsKind::FreeBSD));
         assert!(Platform::All.matches(OsKind::Other));
 
         assert!(Platform::Windows.matches(OsKind::Windows));
         assert!(!Platform::Windows.matches(OsKind::Mac));
-        assert!(!Platform::Windows.matches(OsKind::Other));
+        assert!(!Platform::Windows.matches(OsKind::Linux));
 
         assert!(Platform::Mac.matches(OsKind::Mac));
         assert!(!Platform::Mac.matches(OsKind::Windows));
-        assert!(!Platform::Mac.matches(OsKind::Other));
+        assert!(!Platform::Mac.matches(OsKind::Linux));
+
+        assert!(Platform::Linux.matches(OsKind::Linux));
+        assert!(!Platform::Linux.matches(OsKind::Windows));
+        assert!(!Platform::Linux.matches(OsKind::Mac));
+
+        assert!(Platform::Unix.matches(OsKind::Mac));
+        assert!(Platform::Unix.matches(OsKind::Linux));
+        assert!(Platform::Unix.matches(OsKind::FreeBSD));
+        assert!(!Platform::Unix.matches(OsKind::Windows));
+        assert!(!Platform::Unix.matches(OsKind::Other));
     }
 }

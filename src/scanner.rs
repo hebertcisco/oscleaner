@@ -14,7 +14,7 @@ pub fn scan_categories(categories: &[CleanupCategory], ctx: &ScanContext) -> Res
     let pb = ProgressBar::new(categories.len() as u64);
     pb.set_style(
         ProgressStyle::with_template("{spinner:.green} {msg} ({pos}/{len})")
-            .unwrap()
+            .expect("hardcoded progress template is valid")
             .tick_chars("|/-\\"),
     );
 

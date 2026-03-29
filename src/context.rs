@@ -14,6 +14,8 @@ pub struct ScanContext {
     pub local_app_data: Option<PathBuf>,
     pub roaming_app_data: Option<PathBuf>,
     pub program_data: Option<PathBuf>,
+    pub xdg_cache_home: Option<PathBuf>,
+    pub xdg_data_home: Option<PathBuf>,
 }
 
 impl ScanContext {
@@ -22,6 +24,10 @@ impl ScanContext {
             OsKind::Windows
         } else if cfg!(target_os = "macos") {
             OsKind::Mac
+        } else if cfg!(target_os = "linux") {
+            OsKind::Linux
+        } else if cfg!(target_os = "freebsd") {
+            OsKind::FreeBSD
         } else {
             OsKind::Other
         };
@@ -36,6 +42,18 @@ impl ScanContext {
         let local_app_data = env::var_os("LOCALAPPDATA").map(PathBuf::from);
         let roaming_app_data = env::var_os("APPDATA").map(PathBuf::from);
         let program_data = env::var_os("PROGRAMDATA").map(PathBuf::from);
+
+        let xdg_cache_home = Some(
+            env::var_os("XDG_CACHE_HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| home.join(".cache")),
+        );
+        let xdg_data_home = Some(
+            env::var_os("XDG_DATA_HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| home.join(".local/share")),
+        );
+
         let search_roots = build_search_roots(&home, &cwd);
 
         Ok(Self {
@@ -46,6 +64,8 @@ impl ScanContext {
             local_app_data,
             roaming_app_data,
             program_data,
+            xdg_cache_home,
+            xdg_data_home,
         })
     }
 }
@@ -84,10 +104,13 @@ mod tests {
         fs::create_dir_all(home.join("dev")).unwrap();
 
         let roots = build_search_roots(&home, &cwd);
-        assert_eq!(roots[0], cwd);
-        assert_eq!(roots[1], home.join("Projects"));
-        assert_eq!(roots[2], home.join("dev"));
-        assert_eq!(roots.last().unwrap(), &home);
+        assert_eq!(roots[0], cwd, "first root should be cwd");
+        // On case-insensitive filesystems (macOS), "projects" also matches
+        // the existing "Projects" dir, so we just check membership instead
+        // of exact positions for the middle entries.
+        assert!(roots.contains(&home.join("Projects")));
+        assert!(roots.contains(&home.join("dev")));
+        assert_eq!(roots.last().unwrap(), &home, "last root should be home");
     }
 
     #[test]
