@@ -13,6 +13,7 @@ use crate::cli::{
     RunMode,
 };
 use crate::context::ScanContext;
+use crate::safe::{self, SafeConfig};
 use crate::scanner::{filter_findings, scan_categories, summarize_findings};
 use crate::types::Finding;
 
@@ -36,7 +37,7 @@ pub fn run() -> Result<()> {
             run_clean_command(&categories, &ctx, &requested_ids, &opts)?;
         }
         RunMode::Interactive => {
-            if opts.yes {
+            if opts.effective_yes() {
                 run_clean_command(&categories, &ctx, &requested_ids, &opts)?;
             } else {
                 run_interactive_flow(&categories, &ctx, &opts)?;
@@ -76,7 +77,16 @@ fn run_clean_command(
     opts: &CliOptions,
 ) -> Result<()> {
     let targets = opts.targets();
-    let categories_to_scan = pick_categories(categories, requested_ids, targets.all);
+    let yes = opts.effective_yes();
+    let safe_config = if opts.safe {
+        let cfg = SafeConfig::new(&ctx.home, ctx.os, opts.max_size_gb, opts.min_age_days);
+        safe::print_safe_banner(&cfg);
+        Some(cfg)
+    } else {
+        None
+    };
+
+    let categories_to_scan = pick_categories(categories, requested_ids, targets.all || opts.safe);
     let (findings, scan_duration) = run_scan(&categories_to_scan, ctx)?;
 
     if findings.is_empty() {
@@ -87,11 +97,47 @@ fn run_clean_command(
         return Ok(());
     }
 
+    // In safe mode, apply age and protected-path filters
+    let (findings, skipped_reasons) = if let Some(ref cfg) = safe_config {
+        let (kept, skipped) = safe::filter_safe(findings, cfg);
+        if !skipped.is_empty() {
+            println!(
+                "{} {} items skipped (protected or too recent)",
+                style("Safe filter:").bold(),
+                skipped.len()
+            );
+        }
+        (kept, skipped)
+    } else {
+        (findings, Vec::new())
+    };
+
+    if findings.is_empty() {
+        println!(
+            "{}",
+            style("No cleanup targets remain after safe filtering.").green()
+        );
+        return Ok(());
+    }
+
+    // In safe mode, enforce size limit
+    if let Some(ref cfg) = safe_config {
+        if let Err(total) = safe::check_size_limit(&findings, cfg.max_bytes) {
+            println!(
+                "{} Total size {} exceeds safe limit of {}. Aborting.",
+                style("SAFE ABORT:").red().bold(),
+                style(HumanBytes(total)).yellow(),
+                style(HumanBytes(cfg.max_bytes)).yellow()
+            );
+            return Ok(());
+        }
+    }
+
     let summaries = summarize_findings(&findings);
     show_summary(&summaries, scan_duration);
 
     let mut selected_ids = requested_ids.clone();
-    if selected_ids.is_empty() && (targets.all || opts.yes) {
+    if selected_ids.is_empty() && (targets.all || yes || opts.safe) {
         selected_ids.extend(summaries.iter().map(|s| s.id));
     } else if selected_ids.is_empty() {
         selected_ids = prompt_category_selection(&summaries)?;
@@ -111,7 +157,7 @@ fn run_clean_command(
     let final_items: Vec<&Finding>;
     let final_bytes: u64;
 
-    if !opts.yes {
+    if !yes {
         let chosen = prompt_item_selection(&selected_items)?;
         if chosen.is_empty() {
             println!("{}", style("No items selected. Exiting.").yellow());
@@ -132,11 +178,11 @@ fn run_clean_command(
     );
 
     let mut dry_run = opts.dry_run;
-    if !opts.yes && !opts.dry_run {
+    if !yes && !opts.dry_run {
         dry_run = confirm_dry_run(false)?;
     }
 
-    if !dry_run && !opts.yes {
+    if !dry_run && !yes {
         let proceed = confirm_cleanup(final_bytes)?;
         if !proceed {
             println!("{}", style("Cancelled by user.").yellow());
@@ -146,6 +192,12 @@ fn run_clean_command(
 
     let report = perform_cleanup(&final_items, dry_run);
     print_report(&report);
+
+    // In safe mode, always write log
+    if let Some(ref cfg) = safe_config {
+        safe::write_safe_log(&ctx.home, &report, &final_items, &skipped_reasons, cfg);
+    }
+
     Ok(())
 }
 

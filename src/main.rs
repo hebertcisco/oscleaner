@@ -5,6 +5,7 @@ mod cli;
 mod context;
 mod detectors;
 mod fs_utils;
+mod safe;
 mod scanner;
 mod types;
 

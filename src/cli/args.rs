@@ -4,6 +4,7 @@ use anyhow::{bail, Result};
 use clap::{Args, Parser, Subcommand};
 
 use crate::categories::CleanupCategory;
+use crate::safe;
 
 #[derive(Parser, Debug, Default)]
 #[command(name = "oscleaner", version, about = "Scan, preview, and clean development/system clutter")]
@@ -22,6 +23,26 @@ pub struct CliOptions {
         help = "Skip interactive confirmations and proceed directly"
     )]
     pub yes: bool,
+    #[arg(
+        long = "safe",
+        global = true,
+        help = "Safe mode: only regenerable caches, age/size limits, auto-confirm (ideal for cron)"
+    )]
+    pub safe: bool,
+    #[arg(
+        long = "max-size",
+        value_name = "GB",
+        global = true,
+        help = "Maximum total GB allowed to delete (default: 20 in safe mode)"
+    )]
+    pub max_size_gb: Option<u64>,
+    #[arg(
+        long = "min-age",
+        value_name = "DAYS",
+        global = true,
+        help = "Only delete items older than N days (default: 2 in safe mode)"
+    )]
+    pub min_age_days: Option<u64>,
     #[command(flatten)]
     pub targets: TargetArgs,
     #[command(subcommand)]
@@ -138,7 +159,8 @@ impl CliOptions {
             Some(Command::Clean(_)) => RunMode::Clean,
             Some(Command::List) => RunMode::List,
             None => {
-                if self.targets.all
+                if self.safe
+                    || self.targets.all
                     || self.targets.category_flags.has_any()
                     || !self.targets.categories.is_empty()
                 {
@@ -148,6 +170,11 @@ impl CliOptions {
                 }
             }
         }
+    }
+
+    /// In safe mode, --yes is implicit.
+    pub fn effective_yes(&self) -> bool {
+        self.yes || self.safe
     }
 
     pub fn targets(&self) -> &TargetArgs {
@@ -180,8 +207,14 @@ impl CliOptions {
             }
         }
 
-        if targets.all {
+        if targets.all || self.safe {
             ids.extend(available_ids.into_iter());
+        }
+
+        // In safe mode, restrict to only safe categories
+        if self.safe {
+            let safe_ids: HashSet<&str> = safe::safe_category_ids().iter().copied().collect();
+            ids.retain(|id| safe_ids.contains(id));
         }
 
         Ok(ids)
