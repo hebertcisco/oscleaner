@@ -1,10 +1,31 @@
 use std::fs;
+use std::path::Path;
 
 use console::style;
 use indicatif::{HumanBytes, ProgressBar, ProgressStyle};
 
 use crate::fs_utils::shorten_path;
 use crate::types::{CleanReport, Finding};
+
+fn remove_dir_contents(path: &Path) -> std::io::Result<u64> {
+    let mut freed = 0u64;
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        let child = entry.path();
+        if child.is_dir() {
+            match fs::remove_dir_all(&child) {
+                Ok(()) => freed += 1,
+                Err(_) => {
+                    freed += remove_dir_contents(&child)?;
+                }
+            }
+        } else {
+            fs::remove_file(&child)?;
+            freed += 1;
+        }
+    }
+    Ok(freed)
+}
 
 pub fn perform_cleanup(items: &[&Finding], dry_run: bool) -> CleanReport {
     let pb = ProgressBar::new(items.len() as u64);
@@ -32,7 +53,9 @@ pub fn perform_cleanup(items: &[&Finding], dry_run: bool) -> CleanReport {
         }
 
         let result = if item.is_dir {
-            fs::remove_dir_all(&item.path)
+            fs::remove_dir_all(&item.path).or_else(|_| {
+                remove_dir_contents(&item.path).map(|_| ())
+            })
         } else {
             fs::remove_file(&item.path)
         };

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use walkdir::WalkDir;
 
 use crate::context::ScanContext;
+use crate::fs_utils::list_children;
 use crate::types::OsKind;
 
 fn is_linux(ctx: &ScanContext) -> bool {
@@ -16,28 +17,37 @@ pub fn detect_linux_user_cache(ctx: &ScanContext) -> Vec<PathBuf> {
     ctx.xdg_cache_home
         .as_ref()
         .filter(|p| p.exists())
-        .cloned()
-        .into_iter()
-        .collect()
+        .map(|p| list_children(p))
+        .unwrap_or_default()
 }
 
 pub fn detect_linux_logs(ctx: &ScanContext) -> Vec<PathBuf> {
     if !is_linux(ctx) {
         return Vec::new();
     }
-    let paths = vec![
-        PathBuf::from("/var/log"),
-        ctx.home.join(".local/share/syslog"),
-    ];
-    paths.into_iter().filter(|p| p.exists()).collect()
+    let mut paths = Vec::new();
+    let var_log = PathBuf::from("/var/log");
+    if var_log.exists() {
+        paths.extend(list_children(&var_log));
+    }
+    let user_syslog = ctx.home.join(".local/share/syslog");
+    if user_syslog.exists() {
+        paths.push(user_syslog);
+    }
+    paths
 }
 
 pub fn detect_linux_tmp(ctx: &ScanContext) -> Vec<PathBuf> {
     if !is_linux(ctx) {
         return Vec::new();
     }
-    let paths = vec![PathBuf::from("/tmp"), PathBuf::from("/var/tmp")];
-    paths.into_iter().filter(|p| p.exists()).collect()
+    let mut paths = Vec::new();
+    for dir in &[PathBuf::from("/tmp"), PathBuf::from("/var/tmp")] {
+        if dir.exists() {
+            paths.extend(list_children(dir));
+        }
+    }
+    paths
 }
 
 pub fn detect_linux_journal(ctx: &ScanContext) -> Vec<PathBuf> {
