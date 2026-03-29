@@ -37,15 +37,11 @@ pub fn calc_size(path: &Path) -> io::Result<u64> {
     }
 
     let mut size = 0u64;
-    for entry in WalkDir::new(path).follow_links(false).into_iter() {
-        let entry = match entry {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-        if entry.file_type().is_file() {
-            if let Ok(meta) = entry.metadata() {
-                size = size.saturating_add(meta.len());
-            }
+    for entry in WalkDir::new(path).follow_links(false).into_iter().flatten() {
+        if entry.file_type().is_file()
+            && let Ok(meta) = entry.metadata()
+        {
+            size = size.saturating_add(meta.len());
         }
     }
     Ok(size)

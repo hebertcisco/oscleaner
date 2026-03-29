@@ -6,6 +6,69 @@ use clap::{Args, Parser, Subcommand};
 use crate::categories::CleanupCategory;
 use crate::safe;
 
+macro_rules! category_flags {
+    ($(($field:ident, $id:literal, $help:literal)),+ $(,)?) => {
+        #[derive(Args, Debug, Default, Clone, PartialEq, Eq)]
+        pub struct CategoryFlags {
+            $(
+                #[arg(long, help = $help)]
+                pub $field: bool,
+            )+
+        }
+
+        impl CategoryFlags {
+            pub fn has_any(&self) -> bool {
+                $(self.$field)||+
+            }
+
+            pub fn to_ids(&self) -> HashSet<&'static str> {
+                let mut ids = HashSet::new();
+                $(
+                    if self.$field {
+                        ids.insert($id);
+                    }
+                )+
+                ids
+            }
+        }
+    };
+}
+
+category_flags!(
+    (node_modules,      "node_modules",      "Node.js node_modules folders"),
+    (docker,            "docker",            "Docker caches, images, containers, and build data"),
+    (xcode,             "xcode",             "Xcode DerivedData and archives (macOS)"),
+    (android_builds,    "android_builds",    "Android build folders"),
+    (react_native_ios,  "react_native_ios",  "React Native iOS Pods/builds"),
+    (gradle_cache,      "gradle_cache",      "Gradle cache"),
+    (maven_cache,       "maven_cache",       "Maven repository cache"),
+    (cargo_targets,     "cargo_targets",     "Cargo target directories"),
+    (php_vendor,        "php_vendor",        "PHP vendor directories (Composer)"),
+    (ruby_vendor,       "ruby_vendor",       "Ruby vendor directories (Bundler)"),
+    (python_cache,      "python_cache",      "Python __pycache__, pyc files, and virtualenvs"),
+    (cocoapods_cache,   "cocoapods_cache",   "CocoaPods cache (macOS)"),
+    (mac_caches,        "mac_caches",        "macOS user caches"),
+    (mac_logs,          "mac_logs",          "macOS system and user logs"),
+    (mac_tmp,           "mac_tmp",           "macOS temporary files"),
+    (ios_backups,       "ios_backups",       "iOS device backups (macOS)"),
+    (homebrew_cache,    "homebrew_cache",    "Homebrew cache (macOS)"),
+    (mail_downloads,    "mail_downloads",    "Mail downloads cache (macOS)"),
+    (windows_temp,      "windows_temp",      "Windows temp folder"),
+    (windows_update,    "windows_update",    "Windows Update cache"),
+    (windows_thumbnail, "windows_thumbnail", "Windows thumbnail cache"),
+    (windows_prefetch,  "windows_prefetch",  "Windows prefetch files"),
+    (windows_wer,       "windows_wer",       "Windows error reporting data"),
+    (browser_caches,    "browser_caches",    "Browser caches (Chrome, Firefox, Edge, Brave, Safari)"),
+    (linux_cache,       "linux_cache",       "Linux user cache (~/.cache)"),
+    (linux_logs,        "linux_logs",        "Linux system and user logs"),
+    (linux_tmp,         "linux_tmp",         "Linux temporary files (/tmp, /var/tmp)"),
+    (linux_journal,     "linux_journal",     "Systemd journal logs"),
+    (linux_coredumps,   "linux_coredumps",   "Linux core dumps"),
+    (linux_trash,       "linux_trash",       "Linux XDG Trash"),
+    (snap_cache,        "snap_cache",        "Snap package caches"),
+    (flatpak_cache,     "flatpak_cache",     "Flatpak app caches"),
+);
+
 #[derive(Parser, Debug, Default)]
 #[command(name = "oscleaner", version, about = "Scan, preview, and clean development/system clutter")]
 pub struct CliOptions {
@@ -80,74 +143,6 @@ pub struct TargetArgs {
     pub category_flags: CategoryFlags,
 }
 
-#[derive(Args, Debug, Default, Clone, PartialEq, Eq)]
-pub struct CategoryFlags {
-    #[arg(long, help = "Node.js node_modules folders")]
-    pub node_modules: bool,
-    #[arg(long, help = "Docker caches, images, containers, and build data")]
-    pub docker: bool,
-    #[arg(long, help = "Xcode DerivedData and archives (macOS)")]
-    pub xcode: bool,
-    #[arg(long, help = "Android build folders")]
-    pub android_builds: bool,
-    #[arg(long, help = "React Native iOS Pods/builds")]
-    pub react_native_ios: bool,
-    #[arg(long, help = "Gradle cache")]
-    pub gradle_cache: bool,
-    #[arg(long, help = "Maven repository cache")]
-    pub maven_cache: bool,
-    #[arg(long, help = "Cargo target directories")]
-    pub cargo_targets: bool,
-    #[arg(long, help = "PHP vendor directories (Composer)")]
-    pub php_vendor: bool,
-    #[arg(long, help = "Ruby vendor directories (Bundler)")]
-    pub ruby_vendor: bool,
-    #[arg(long, help = "Python __pycache__, pyc files, and virtualenvs")]
-    pub python_cache: bool,
-    #[arg(long, help = "CocoaPods cache (macOS)")]
-    pub cocoapods_cache: bool,
-    #[arg(long, help = "macOS user caches")]
-    pub mac_caches: bool,
-    #[arg(long, help = "macOS system and user logs")]
-    pub mac_logs: bool,
-    #[arg(long, help = "macOS temporary files")]
-    pub mac_tmp: bool,
-    #[arg(long, help = "iOS device backups (macOS)")]
-    pub ios_backups: bool,
-    #[arg(long, help = "Homebrew cache (macOS)")]
-    pub homebrew_cache: bool,
-    #[arg(long, help = "Mail downloads cache (macOS)")]
-    pub mail_downloads: bool,
-    #[arg(long, help = "Windows temp folder")]
-    pub windows_temp: bool,
-    #[arg(long, help = "Windows Update cache")]
-    pub windows_update: bool,
-    #[arg(long, help = "Windows thumbnail cache")]
-    pub windows_thumbnail: bool,
-    #[arg(long, help = "Windows prefetch files")]
-    pub windows_prefetch: bool,
-    #[arg(long, help = "Windows error reporting data")]
-    pub windows_wer: bool,
-    #[arg(long, help = "Browser caches (Chrome, Firefox, Edge, Brave, Safari)")]
-    pub browser_caches: bool,
-    #[arg(long, help = "Linux user cache (~/.cache)")]
-    pub linux_cache: bool,
-    #[arg(long, help = "Linux system and user logs")]
-    pub linux_logs: bool,
-    #[arg(long, help = "Linux temporary files (/tmp, /var/tmp)")]
-    pub linux_tmp: bool,
-    #[arg(long, help = "Systemd journal logs")]
-    pub linux_journal: bool,
-    #[arg(long, help = "Linux core dumps")]
-    pub linux_coredumps: bool,
-    #[arg(long, help = "Linux XDG Trash")]
-    pub linux_trash: bool,
-    #[arg(long, help = "Snap package caches")]
-    pub snap_cache: bool,
-    #[arg(long, help = "Flatpak app caches")]
-    pub flatpak_cache: bool,
-}
-
 impl CliOptions {
     pub fn from_env() -> Self {
         CliOptions::parse()
@@ -179,7 +174,7 @@ impl CliOptions {
 
     pub fn targets(&self) -> &TargetArgs {
         match &self.command {
-            Some(Command::Scan(targets)) | Some(Command::Clean(targets)) => targets,
+            Some(Command::Scan(targets) | Command::Clean(targets)) => targets,
             Some(Command::List) | None => &self.targets,
         }
     }
@@ -208,154 +203,15 @@ impl CliOptions {
         }
 
         if targets.all || self.safe {
-            ids.extend(available_ids.into_iter());
+            ids.extend(available_ids);
         }
 
-        // In safe mode, restrict to only safe categories
         if self.safe {
             let safe_ids: HashSet<&str> = safe::safe_category_ids().iter().copied().collect();
             ids.retain(|id| safe_ids.contains(id));
         }
 
         Ok(ids)
-    }
-}
-
-impl CategoryFlags {
-    pub fn has_any(&self) -> bool {
-        self.node_modules
-            || self.docker
-            || self.xcode
-            || self.android_builds
-            || self.react_native_ios
-            || self.gradle_cache
-            || self.maven_cache
-            || self.cargo_targets
-            || self.php_vendor
-            || self.ruby_vendor
-            || self.python_cache
-            || self.cocoapods_cache
-            || self.mac_caches
-            || self.mac_logs
-            || self.mac_tmp
-            || self.ios_backups
-            || self.homebrew_cache
-            || self.mail_downloads
-            || self.windows_temp
-            || self.windows_update
-            || self.windows_thumbnail
-            || self.windows_prefetch
-            || self.windows_wer
-            || self.browser_caches
-            || self.linux_cache
-            || self.linux_logs
-            || self.linux_tmp
-            || self.linux_journal
-            || self.linux_coredumps
-            || self.linux_trash
-            || self.snap_cache
-            || self.flatpak_cache
-    }
-
-    pub fn to_ids(&self) -> HashSet<&'static str> {
-        let mut ids = HashSet::new();
-        if self.node_modules {
-            ids.insert("node_modules");
-        }
-        if self.docker {
-            ids.insert("docker");
-        }
-        if self.xcode {
-            ids.insert("xcode");
-        }
-        if self.android_builds {
-            ids.insert("android_builds");
-        }
-        if self.react_native_ios {
-            ids.insert("react_native_ios");
-        }
-        if self.gradle_cache {
-            ids.insert("gradle_cache");
-        }
-        if self.maven_cache {
-            ids.insert("maven_cache");
-        }
-        if self.cargo_targets {
-            ids.insert("cargo_targets");
-        }
-        if self.php_vendor {
-            ids.insert("php_vendor");
-        }
-        if self.ruby_vendor {
-            ids.insert("ruby_vendor");
-        }
-        if self.python_cache {
-            ids.insert("python_cache");
-        }
-        if self.cocoapods_cache {
-            ids.insert("cocoapods_cache");
-        }
-        if self.mac_caches {
-            ids.insert("mac_caches");
-        }
-        if self.mac_logs {
-            ids.insert("mac_logs");
-        }
-        if self.mac_tmp {
-            ids.insert("mac_tmp");
-        }
-        if self.ios_backups {
-            ids.insert("ios_backups");
-        }
-        if self.homebrew_cache {
-            ids.insert("homebrew_cache");
-        }
-        if self.mail_downloads {
-            ids.insert("mail_downloads");
-        }
-        if self.windows_temp {
-            ids.insert("windows_temp");
-        }
-        if self.windows_update {
-            ids.insert("windows_update");
-        }
-        if self.windows_thumbnail {
-            ids.insert("windows_thumbnail");
-        }
-        if self.windows_prefetch {
-            ids.insert("windows_prefetch");
-        }
-        if self.windows_wer {
-            ids.insert("windows_wer");
-        }
-        if self.browser_caches {
-            ids.insert("browser_caches");
-        }
-        if self.linux_cache {
-            ids.insert("linux_cache");
-        }
-        if self.linux_logs {
-            ids.insert("linux_logs");
-        }
-        if self.linux_tmp {
-            ids.insert("linux_tmp");
-        }
-        if self.linux_journal {
-            ids.insert("linux_journal");
-        }
-        if self.linux_coredumps {
-            ids.insert("linux_coredumps");
-        }
-        if self.linux_trash {
-            ids.insert("linux_trash");
-        }
-        if self.snap_cache {
-            ids.insert("snap_cache");
-        }
-        if self.flatpak_cache {
-            ids.insert("flatpak_cache");
-        }
-        ids
     }
 }
 

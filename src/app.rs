@@ -120,17 +120,16 @@ fn run_clean_command(
         return Ok(());
     }
 
-    // In safe mode, enforce size limit
-    if let Some(ref cfg) = safe_config {
-        if let Err(total) = safe::check_size_limit(&findings, cfg.max_bytes) {
-            println!(
-                "{} Total size {} exceeds safe limit of {}. Aborting.",
-                style("SAFE ABORT:").red().bold(),
-                style(HumanBytes(total)).yellow(),
-                style(HumanBytes(cfg.max_bytes)).yellow()
-            );
-            return Ok(());
-        }
+    if let Some(ref cfg) = safe_config
+        && let Some(total) = safe::exceeds_size_limit(&findings, cfg.max_bytes)
+    {
+        println!(
+            "{} Total size {} exceeds safe limit of {}. Aborting.",
+            style("SAFE ABORT:").red().bold(),
+            style(HumanBytes(total)).yellow(),
+            style(HumanBytes(cfg.max_bytes)).yellow()
+        );
+        return Ok(());
     }
 
     let summaries = summarize_findings(&findings);
@@ -193,9 +192,14 @@ fn run_clean_command(
     let report = perform_cleanup(&final_items, dry_run);
     print_report(&report);
 
-    // In safe mode, always write log
-    if let Some(ref cfg) = safe_config {
-        safe::write_safe_log(&ctx.home, &report, &final_items, &skipped_reasons, cfg);
+    if let Some(ref cfg) = safe_config
+        && let Err(err) = safe::write_safe_log(&ctx.home, &report, &final_items, &skipped_reasons, cfg)
+    {
+        eprintln!(
+            "{} Failed to write safe run log: {}",
+            style("WARNING:").yellow(),
+            err
+        );
     }
 
     Ok(())

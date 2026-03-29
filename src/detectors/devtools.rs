@@ -49,17 +49,22 @@ pub fn detect_android_builds(ctx: &ScanContext) -> Vec<PathBuf> {
             .filter_map(|e| e.ok())
             .filter(|e| e.file_type().is_dir())
         {
-            if entry.file_name() == "build" {
-                if let Some(parent) = entry.path().parent() {
-                    let name = parent
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("")
-                        .to_lowercase();
-                    if name.contains("android") || name == "app" {
-                        hits.push(entry.path().to_path_buf());
-                    }
-                }
+            if entry.file_name() != "build" {
+                continue;
+            }
+            let is_android_build = entry
+                .path()
+                .parent()
+                .and_then(|p| p.file_name())
+                .and_then(|n| n.to_str())
+                .map(|name| {
+                    let lower = name.to_lowercase();
+                    lower.contains("android") || lower == "app"
+                })
+                .unwrap_or(false);
+
+            if is_android_build {
+                hits.push(entry.path().to_path_buf());
             }
         }
     }
@@ -79,19 +84,18 @@ pub fn detect_react_native_ios(ctx: &ScanContext) -> Vec<PathBuf> {
             .filter(|e| e.file_type().is_dir())
         {
             let name = entry.file_name();
-            if name == "Pods" {
-                if let Some(parent) = entry.path().parent() {
-                    if parent.file_name().map(|f| f == "ios").unwrap_or(false) {
-                        hits.push(entry.path().to_path_buf());
-                    }
-                }
+            if name != "Pods" && name != "build" {
+                continue;
             }
-            if name == "build" {
-                if let Some(parent) = entry.path().parent() {
-                    if parent.file_name().map(|f| f == "ios").unwrap_or(false) {
-                        hits.push(entry.path().to_path_buf());
-                    }
-                }
+            let parent_is_ios = entry
+                .path()
+                .parent()
+                .and_then(|p| p.file_name())
+                .map(|f| f == "ios")
+                .unwrap_or(false);
+
+            if parent_is_ios {
+                hits.push(entry.path().to_path_buf());
             }
         }
     }

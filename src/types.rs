@@ -21,14 +21,14 @@ pub enum Platform {
 
 impl Platform {
     pub fn matches(self, os: OsKind) -> bool {
-        match (self, os) {
-            (Platform::All, _) => true,
-            (Platform::Windows, OsKind::Windows) => true,
-            (Platform::Mac, OsKind::Mac) => true,
-            (Platform::Linux, OsKind::Linux) => true,
-            (Platform::Unix, OsKind::Mac | OsKind::Linux | OsKind::FreeBSD) => true,
-            _ => false,
-        }
+        matches!(
+            (self, os),
+            (Self::All, _)
+                | (Self::Windows, OsKind::Windows)
+                | (Self::Mac, OsKind::Mac)
+                | (Self::Linux, OsKind::Linux)
+                | (Self::Unix, OsKind::Mac | OsKind::Linux | OsKind::FreeBSD)
+        )
     }
 }
 

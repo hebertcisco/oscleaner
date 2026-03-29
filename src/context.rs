@@ -43,12 +43,16 @@ impl ScanContext {
         let roaming_app_data = env::var_os("APPDATA").map(PathBuf::from);
         let program_data = env::var_os("PROGRAMDATA").map(PathBuf::from);
 
-        let xdg_cache_home = env::var_os("XDG_CACHE_HOME")
-            .map(PathBuf::from)
-            .or_else(|| Some(home.join(".cache")));
-        let xdg_data_home = env::var_os("XDG_DATA_HOME")
-            .map(PathBuf::from)
-            .or_else(|| Some(home.join(".local/share")));
+        let xdg_cache_home = Some(
+            env::var_os("XDG_CACHE_HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| home.join(".cache")),
+        );
+        let xdg_data_home = Some(
+            env::var_os("XDG_DATA_HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| home.join(".local/share")),
+        );
 
         let search_roots = build_search_roots(&home, &cwd);
 
