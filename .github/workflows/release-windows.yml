@@ -162,26 +162,25 @@ jobs:
           $toolsPath = "tools"
           New-Item -ItemType Directory -Force -Path $toolsPath | Out-Null
 
-          $installScript = @'
-$ErrorActionPreference = 'Stop'
-$toolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$packageArgs = @{
-  packageName    = 'oscleaner'
-  url64bit       = 'ZIP_URL_PLACEHOLDER'
-  checksumType64 = 'sha256'
-  checksum64     = 'ZIP_SHA_PLACEHOLDER'
-  unzipLocation  = $toolsDir
-}
-Install-ChocolateyZipPackage @packageArgs
-$unzippedExe = Join-Path $toolsDir "oscleaner-x86_64-pc-windows-msvc.exe"
-if (Test-Path $unzippedExe) {
-  Copy-Item $unzippedExe (Join-Path $toolsDir "oscleaner.exe") -Force
-  Remove-Item $unzippedExe -Force -ErrorAction SilentlyContinue
-}
-'@
-          $installScript = $installScript.Replace('ZIP_URL_PLACEHOLDER', $zipUrl)
-          $installScript = $installScript.Replace('ZIP_SHA_PLACEHOLDER', $zipSha)
-          Set-Content -Path "$toolsPath/chocolateyinstall.ps1" -Value $installScript
+          $lines = @(
+            "`$ErrorActionPreference = 'Stop'"
+            "`$toolsDir = Split-Path -Parent `$MyInvocation.MyCommand.Definition"
+            "`$packageArgs = @{"
+            "  packageName    = 'oscleaner'"
+            "  url64bit       = '$zipUrl'"
+            "  checksumType64 = 'sha256'"
+            "  checksum64     = '$zipSha'"
+            "  unzipLocation  = `$toolsDir"
+            "}"
+            "Install-ChocolateyZipPackage @packageArgs"
+            "`$unzippedExe = Join-Path `$toolsDir 'oscleaner-x86_64-pc-windows-msvc.exe'"
+            "if (Test-Path `$unzippedExe) {"
+            "  Copy-Item `$unzippedExe (Join-Path `$toolsDir 'oscleaner.exe') -Force"
+            "  Remove-Item `$unzippedExe -Force -ErrorAction SilentlyContinue"
+            "}"
+          )
+          $installScript = $lines -join "`r`n"
+          Set-Content -Path "$toolsPath/chocolateyinstall.ps1" -Value $installScript -NoNewline
 
           choco pack oscleaner.nuspec --version $version --out package
           choco push "package/oscleaner.$version.nupkg" --source "https://push.chocolatey.org/" --api-key "$env:CHOCO_API_KEY"
