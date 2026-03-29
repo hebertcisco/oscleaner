@@ -62,6 +62,16 @@ pub fn calc_size(path: &Path) -> io::Result<u64> {
     Ok(size)
 }
 
+pub fn list_children(dir: &Path) -> Vec<PathBuf> {
+    match std::fs::read_dir(dir) {
+        Ok(entries) => entries
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .collect(),
+        Err(_) => Vec::new(),
+    }
+}
+
 pub fn shorten_path(path: &Path) -> String {
     let display = path.display().to_string();
     if display.len() > 60 {

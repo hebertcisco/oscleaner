@@ -1,23 +1,30 @@
 use std::path::PathBuf;
 
 use crate::context::ScanContext;
+use crate::fs_utils::list_children;
 use crate::types::OsKind;
 
 pub fn detect_windows_temp(ctx: &ScanContext) -> Vec<PathBuf> {
     if ctx.os != OsKind::Windows {
         return Vec::new();
     }
-    vec![ctx.temp.clone()]
+    if ctx.temp.exists() {
+        list_children(&ctx.temp)
+    } else {
+        Vec::new()
+    }
 }
 
 pub fn detect_windows_update_cache(ctx: &ScanContext) -> Vec<PathBuf> {
     if ctx.os != OsKind::Windows {
         return Vec::new();
     }
-    vec![PathBuf::from("C:\\Windows\\SoftwareDistribution\\Download")]
-        .into_iter()
-        .filter(|p| p.exists())
-        .collect()
+    let dir = PathBuf::from("C:\\Windows\\SoftwareDistribution\\Download");
+    if dir.exists() {
+        list_children(&dir)
+    } else {
+        Vec::new()
+    }
 }
 
 pub fn detect_windows_thumbnail_cache(ctx: &ScanContext) -> Vec<PathBuf> {
@@ -27,8 +34,8 @@ pub fn detect_windows_thumbnail_cache(ctx: &ScanContext) -> Vec<PathBuf> {
     ctx.local_app_data
         .as_ref()
         .map(|p| p.join("Microsoft/Windows/Explorer"))
-        .into_iter()
         .filter(|p| p.exists())
+        .into_iter()
         .collect()
 }
 
@@ -38,7 +45,7 @@ pub fn detect_windows_prefetch(ctx: &ScanContext) -> Vec<PathBuf> {
     }
     let path = PathBuf::from("C:\\Windows\\Prefetch");
     if path.exists() {
-        vec![path]
+        list_children(&path)
     } else {
         Vec::new()
     }
@@ -51,7 +58,7 @@ pub fn detect_windows_wer(ctx: &ScanContext) -> Vec<PathBuf> {
     ctx.program_data
         .as_ref()
         .map(|p| p.join("Microsoft/Windows/WER"))
-        .into_iter()
         .filter(|p| p.exists())
+        .into_iter()
         .collect()
 }

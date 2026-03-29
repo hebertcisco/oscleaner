@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use crate::context::ScanContext;
+use crate::fs_utils::list_children;
 use crate::types::OsKind;
 
 pub fn detect_xcode_data(ctx: &ScanContext) -> Vec<PathBuf> {
@@ -32,8 +33,14 @@ pub fn detect_mac_user_caches(ctx: &ScanContext) -> Vec<PathBuf> {
     if ctx.os != OsKind::Mac {
         return Vec::new();
     }
-    let mut paths = vec![ctx.home.join("Library/Caches"), ctx.temp.clone()];
-    paths.retain(|p| p.exists());
+    let mut paths = Vec::new();
+    let caches = ctx.home.join("Library/Caches");
+    if caches.exists() {
+        paths.extend(list_children(&caches));
+    }
+    if ctx.temp.exists() {
+        paths.extend(list_children(&ctx.temp));
+    }
     paths
 }
 
@@ -41,22 +48,29 @@ pub fn detect_mac_logs(ctx: &ScanContext) -> Vec<PathBuf> {
     if ctx.os != OsKind::Mac {
         return Vec::new();
     }
-    let paths = vec![
-        ctx.home.join("Library/Logs"),
-        PathBuf::from("/Library/Logs"),
-    ];
-    paths.into_iter().filter(|p| p.exists()).collect()
+    let mut paths = Vec::new();
+    for dir in &[ctx.home.join("Library/Logs"), PathBuf::from("/Library/Logs")] {
+        if dir.exists() {
+            paths.extend(list_children(dir));
+        }
+    }
+    paths
 }
 
 pub fn detect_mac_temp(ctx: &ScanContext) -> Vec<PathBuf> {
     if ctx.os != OsKind::Mac {
         return Vec::new();
     }
-    let paths = vec![
-        PathBuf::from("/tmp"),
-        ctx.home.join("Library/Application Support/CrashReporter"),
-    ];
-    paths.into_iter().filter(|p| p.exists()).collect()
+    let mut paths = Vec::new();
+    let tmp = PathBuf::from("/tmp");
+    if tmp.exists() {
+        paths.extend(list_children(&tmp));
+    }
+    let crash = ctx.home.join("Library/Application Support/CrashReporter");
+    if crash.exists() {
+        paths.push(crash);
+    }
+    paths
 }
 
 pub fn detect_ios_backups(ctx: &ScanContext) -> Vec<PathBuf> {
