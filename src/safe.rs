@@ -73,13 +73,6 @@ pub fn safe_category_ids() -> &'static [&'static str] {
     SAFE_CATEGORY_IDS
 }
 
-pub fn default_max_size_gb() -> u64 {
-    DEFAULT_MAX_SIZE_GB
-}
-
-pub fn default_min_age_days() -> u64 {
-    DEFAULT_MIN_AGE_DAYS
-}
 
 fn build_protected_paths(home: &Path, os: OsKind) -> Vec<PathBuf> {
     let mut paths = vec![

@@ -10,6 +10,7 @@ pub enum OsKind {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum Platform {
     All,
     Windows,
