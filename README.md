@@ -207,7 +207,7 @@ Contributions are welcome! Please feel free to submit a pull request.
 
 ## Release automation
 
-Tagged releases (e.g. `v1.0.0`) trigger platform-specific workflows:
+Tagged releases (e.g. `v1.1.0`) trigger platform-specific workflows:
 
 - **macOS + Linux** (`.github/workflows/release-macos.yml`): Builds binaries for
   macOS (Apple Silicon and Intel) and Linux x86_64, creates DMG installers,
