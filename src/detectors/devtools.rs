@@ -124,6 +124,36 @@ pub fn detect_ruby_vendor(ctx: &ScanContext) -> Vec<PathBuf> {
         .collect()
 }
 
+pub fn detect_java_heap_dumps(ctx: &ScanContext) -> Vec<PathBuf> {
+    walk_roots(&ctx.search_roots, 6)
+        .into_iter()
+        .filter(|e| {
+            e.file_type().is_file()
+                && e.path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| ext.eq_ignore_ascii_case("hprof"))
+                    .unwrap_or(false)
+        })
+        .map(|e| e.path().to_path_buf())
+        .collect()
+}
+
+pub fn detect_apk_artifacts(ctx: &ScanContext) -> Vec<PathBuf> {
+    walk_roots(&ctx.search_roots, 6)
+        .into_iter()
+        .filter(|e| {
+            e.file_type().is_file()
+                && e.path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| ext.eq_ignore_ascii_case("apk"))
+                    .unwrap_or(false)
+        })
+        .map(|e| e.path().to_path_buf())
+        .collect()
+}
+
 pub fn detect_python_artifacts(ctx: &ScanContext) -> Vec<PathBuf> {
     let venv_names: &[&str] = &[".venv", "venv", "env", "envs", "virtualenv", "virtualenvs"];
 

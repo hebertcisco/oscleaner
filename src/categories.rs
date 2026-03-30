@@ -93,6 +93,20 @@ pub fn build_categories() -> Vec<CleanupCategory> {
             detector: detect_python_artifacts,
         },
         CleanupCategory {
+            id: "java_heap_dumps",
+            name: "Java heap dumps (.hprof)",
+            description: "java_error_in_studio.hprof, java_error_in_phpstorm.hprof, and other JVM heap dump files",
+            platform: Platform::All,
+            detector: detect_java_heap_dumps,
+        },
+        CleanupCategory {
+            id: "apk_artifacts",
+            name: "Android APK files",
+            description: "app-debug.apk and other Android package artifacts",
+            platform: Platform::All,
+            detector: detect_apk_artifacts,
+        },
+        CleanupCategory {
             id: "cocoapods_cache",
             name: "CocoaPods cache",
             description: "~/Library/Caches/CocoaPods",

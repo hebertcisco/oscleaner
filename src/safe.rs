@@ -20,6 +20,8 @@ const SAFE_CATEGORY_IDS: &[&str] = &[
     "cocoapods_cache",
     "android_builds",
     "react_native_ios",
+    "java_heap_dumps",
+    "apk_artifacts",
     "xcode",
     "homebrew_cache",
     "browser_caches",
