@@ -89,6 +89,12 @@ pub struct CliOptions {
     )]
     pub yes: bool,
     #[arg(
+        long = "json",
+        global = true,
+        help = "Output results as JSON (machine-readable, for GUI integration)"
+    )]
+    pub json: bool,
+    #[arg(
         long = "safe",
         global = true,
         help = "Safe mode: only regenerable caches, age/size limits, auto-confirm (ideal for cron)"

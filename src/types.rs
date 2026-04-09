@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use serde::Serialize;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OsKind {
     Windows,
@@ -32,7 +34,7 @@ impl Platform {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Finding {
     pub category_id: &'static str,
     pub category_name: &'static str,
@@ -42,7 +44,7 @@ pub struct Finding {
     pub is_dir: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct CategorySummary {
     pub id: &'static str,
     pub name: &'static str,
@@ -51,7 +53,7 @@ pub struct CategorySummary {
     pub items: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct CleanReport {
     pub dry_run: bool,
     pub attempted: usize,
