@@ -5,7 +5,11 @@ use crate::fs_utils::{search_for_dir, walk_roots};
 use crate::types::OsKind;
 
 pub fn detect_node_modules(ctx: &ScanContext) -> Vec<PathBuf> {
+    let caches_dir = ctx.home.join("Library/Caches");
     search_for_dir(&ctx.search_roots, "node_modules", 5)
+        .into_iter()
+        .filter(|p| !p.starts_with(&caches_dir))
+        .collect()
 }
 
 pub fn detect_docker_data(ctx: &ScanContext) -> Vec<PathBuf> {

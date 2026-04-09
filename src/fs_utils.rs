@@ -12,6 +12,7 @@ const SKIPPABLE_DIRS: &[&str] = &[
     ".rbenv",
     ".nvm",
     ".oh-my-zsh",
+    ".composer",
     "target",
 ];
 
