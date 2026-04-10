@@ -12,12 +12,37 @@ const SKIPPABLE_DIRS: &[&str] = &[
     ".rbenv",
     ".nvm",
     ".oh-my-zsh",
+    ".composer",
     "target",
 ];
 
 pub fn is_skippable(entry: &DirEntry) -> bool {
     let name = entry.file_name().to_string_lossy();
-    SKIPPABLE_DIRS.contains(&name.as_ref())
+    SKIPPABLE_DIRS.contains(&name.as_ref()) || is_google_drive_cloud_storage_path(entry.path())
+}
+
+fn is_google_drive_cloud_storage_path(path: &Path) -> bool {
+    let mut saw_library = false;
+    let mut saw_cloud_storage = false;
+
+    for part in path.iter().filter_map(|part| part.to_str()) {
+        if !saw_library {
+            saw_library = part == "Library";
+            continue;
+        }
+
+        if !saw_cloud_storage {
+            saw_cloud_storage = part == "CloudStorage";
+            if !saw_cloud_storage {
+                saw_library = part == "Library";
+            }
+            continue;
+        }
+
+        return part.starts_with("GoogleDrive");
+    }
+
+    false
 }
 
 pub fn walk_roots(roots: &[PathBuf], max_depth: usize) -> Vec<DirEntry> {
@@ -120,5 +145,21 @@ mod tests {
         assert!(shortened.contains("..."));
         assert!(shortened.starts_with(expected_start));
         assert!(shortened.ends_with(expected_end));
+    }
+
+    #[test]
+    fn skips_google_drive_cloud_storage_paths_with_account_suffix() {
+        let path = PathBuf::from(
+            "/Users/test/Library/CloudStorage/GoogleDrive-user@example.com/.tmp/app-debug.apk",
+        );
+
+        assert!(is_google_drive_cloud_storage_path(&path));
+    }
+
+    #[test]
+    fn does_not_skip_other_cloud_storage_paths() {
+        let path = PathBuf::from("/Users/test/Library/CloudStorage/Dropbox/cache/file.apk");
+
+        assert!(!is_google_drive_cloud_storage_path(&path));
     }
 }

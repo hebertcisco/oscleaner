@@ -46,6 +46,8 @@ category_flags!(
     (php_vendor,        "php_vendor",        "PHP vendor directories (Composer)"),
     (ruby_vendor,       "ruby_vendor",       "Ruby vendor directories (Bundler)"),
     (python_cache,      "python_cache",      "Python __pycache__, pyc files, and virtualenvs"),
+    (java_heap_dumps,   "java_heap_dumps",   "Java heap dump files (.hprof)"),
+    (apk_artifacts,     "apk_artifacts",     "Android APK artifacts"),
     (cocoapods_cache,   "cocoapods_cache",   "CocoaPods cache (macOS)"),
     (mac_caches,        "mac_caches",        "macOS user caches"),
     (mac_logs,          "mac_logs",          "macOS system and user logs"),
@@ -86,6 +88,12 @@ pub struct CliOptions {
         help = "Skip interactive confirmations and proceed directly"
     )]
     pub yes: bool,
+    #[arg(
+        long = "json",
+        global = true,
+        help = "Output results as JSON (machine-readable, for GUI integration)"
+    )]
+    pub json: bool,
     #[arg(
         long = "safe",
         global = true,

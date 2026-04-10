@@ -5,7 +5,11 @@ use crate::fs_utils::{search_for_dir, walk_roots};
 use crate::types::OsKind;
 
 pub fn detect_node_modules(ctx: &ScanContext) -> Vec<PathBuf> {
+    let caches_dir = ctx.home.join("Library/Caches");
     search_for_dir(&ctx.search_roots, "node_modules", 5)
+        .into_iter()
+        .filter(|p| !p.starts_with(&caches_dir))
+        .collect()
 }
 
 pub fn detect_docker_data(ctx: &ScanContext) -> Vec<PathBuf> {
@@ -118,6 +122,36 @@ pub fn detect_ruby_vendor(ctx: &ScanContext) -> Vec<PathBuf> {
             p.join("bundle").is_dir()
                 || p.parent()
                     .map(|parent| parent.join("Gemfile").exists())
+                    .unwrap_or(false)
+        })
+        .map(|e| e.path().to_path_buf())
+        .collect()
+}
+
+pub fn detect_java_heap_dumps(ctx: &ScanContext) -> Vec<PathBuf> {
+    walk_roots(&ctx.search_roots, 6)
+        .into_iter()
+        .filter(|e| {
+            e.file_type().is_file()
+                && e.path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| ext.eq_ignore_ascii_case("hprof"))
+                    .unwrap_or(false)
+        })
+        .map(|e| e.path().to_path_buf())
+        .collect()
+}
+
+pub fn detect_apk_artifacts(ctx: &ScanContext) -> Vec<PathBuf> {
+    walk_roots(&ctx.search_roots, 6)
+        .into_iter()
+        .filter(|e| {
+            e.file_type().is_file()
+                && e.path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map(|ext| ext.eq_ignore_ascii_case("apk"))
                     .unwrap_or(false)
         })
         .map(|e| e.path().to_path_buf())
