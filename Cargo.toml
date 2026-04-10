@@ -1,6 +1,6 @@
 [package]
 name = "oscleaner"
-version = "1.0.1"
+version = "1.1.1"
 edition = "2024"
 authors = ["Hebert Cisco <hebertcisco@outlook.com>"]
 description = "Cross-platform system cleanup CLI to free up disk space"
