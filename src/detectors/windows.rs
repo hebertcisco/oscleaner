@@ -330,6 +330,7 @@ mod tests {
             program_files: Some(program_files),
             program_files_x86: Some(program_files_x86),
             xdg_cache_home: None,
+            xdg_config_home: None,
             xdg_data_home: None,
         }
     }

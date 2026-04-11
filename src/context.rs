@@ -17,6 +17,7 @@ pub struct ScanContext {
     pub program_files: Option<PathBuf>,
     pub program_files_x86: Option<PathBuf>,
     pub xdg_cache_home: Option<PathBuf>,
+    pub xdg_config_home: Option<PathBuf>,
     pub xdg_data_home: Option<PathBuf>,
 }
 
@@ -52,6 +53,11 @@ impl ScanContext {
                 .map(PathBuf::from)
                 .unwrap_or_else(|| home.join(".cache")),
         );
+        let xdg_config_home = Some(
+            env::var_os("XDG_CONFIG_HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| home.join(".config")),
+        );
         let xdg_data_home = Some(
             env::var_os("XDG_DATA_HOME")
                 .map(PathBuf::from)
@@ -71,6 +77,7 @@ impl ScanContext {
             program_files,
             program_files_x86,
             xdg_cache_home,
+            xdg_config_home,
             xdg_data_home,
         })
     }
