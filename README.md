@@ -49,6 +49,7 @@ A cross-platform system cleanup CLI tool written in Rust to free up disk space b
 -   **Thumbnail Cache:** `%LocalAppData%\Microsoft\Windows\Explorer`.
 -   **Prefetch Files:** `C:\Windows\Prefetch`.
 -   **Windows Error Reporting:** `%ProgramData%\Microsoft\Windows\WER`.
+-   **Dev App Leftovers:** Potential leftovers from removed Windows dev/AI tools such as Cursor (`%USERPROFILE%\.cursor`), Gemini CLI (`%USERPROFILE%\.gemini`), Junie (`%USERPROFILE%\.junie`), Windsurf, Zed, Warp, Postman, Insomnia, GitHub Desktop, and Claude.
 
 ### System Caches (Linux)
 
@@ -124,7 +125,7 @@ cargo install --path .
     -   `--min-age <DAYS>` — only delete items older than N days (default: 2 in safe mode).
     -   `--all` — include every category available on the current platform.
     -   `--category <id>` — target a category by id (repeatable).
-    -   Category shortcuts (use any combination): `--node-modules`, `--docker`, `--xcode`, `--android-builds`, `--react-native-ios`, `--gradle-cache`, `--maven-cache`, `--cargo-targets`, `--php-vendor`, `--ruby-vendor`, `--python-cache`, `--cocoapods-cache`, `--mac-caches`, `--mac-logs`, `--mac-tmp`, `--ios-backups`, `--homebrew-cache`, `--mail-downloads`, `--windows-temp`, `--windows-update`, `--windows-thumbnail`, `--windows-prefetch`, `--windows-wer`, `--browser-caches`, `--linux-cache`, `--linux-logs`, `--linux-tmp`, `--linux-journal`, `--linux-coredumps`, `--linux-trash`, `--snap-cache`, `--flatpak-cache`.
+    -   Category shortcuts (use any combination): `--node-modules`, `--docker`, `--xcode`, `--android-builds`, `--react-native-ios`, `--gradle-cache`, `--maven-cache`, `--cargo-targets`, `--php-vendor`, `--ruby-vendor`, `--python-cache`, `--cocoapods-cache`, `--mac-caches`, `--mac-logs`, `--mac-tmp`, `--ios-backups`, `--homebrew-cache`, `--mail-downloads`, `--windows-temp`, `--windows-update`, `--windows-thumbnail`, `--windows-prefetch`, `--windows-wer`, `--windows-dev-leftovers`, `--browser-caches`, `--linux-cache`, `--linux-logs`, `--linux-tmp`, `--linux-journal`, `--linux-coredumps`, `--linux-trash`, `--snap-cache`, `--flatpak-cache`.
 
 If you supply category flags without a subcommand, `oscleaner` will default to running `clean` with those selections.
 

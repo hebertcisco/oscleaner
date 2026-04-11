@@ -191,6 +191,13 @@ pub fn build_categories() -> Vec<CleanupCategory> {
             detector: detect_windows_wer,
         },
         CleanupCategory {
+            id: "windows_dev_leftovers",
+            name: "Windows dev app leftovers",
+            description: "Potential leftovers from removed dev/AI tools like Cursor, Gemini CLI, Junie, Windsurf, Zed, Warp, Postman, Insomnia, GitHub Desktop, and Claude",
+            platform: Platform::Windows,
+            detector: detect_windows_dev_tool_leftovers,
+        },
+        CleanupCategory {
             id: "browser_caches",
             name: "Browser caches",
             description: "Chrome, Firefox, Edge, Safari, Brave caches",

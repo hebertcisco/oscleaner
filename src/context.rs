@@ -14,6 +14,8 @@ pub struct ScanContext {
     pub local_app_data: Option<PathBuf>,
     pub roaming_app_data: Option<PathBuf>,
     pub program_data: Option<PathBuf>,
+    pub program_files: Option<PathBuf>,
+    pub program_files_x86: Option<PathBuf>,
     pub xdg_cache_home: Option<PathBuf>,
     pub xdg_data_home: Option<PathBuf>,
 }
@@ -42,6 +44,8 @@ impl ScanContext {
         let local_app_data = env::var_os("LOCALAPPDATA").map(PathBuf::from);
         let roaming_app_data = env::var_os("APPDATA").map(PathBuf::from);
         let program_data = env::var_os("PROGRAMDATA").map(PathBuf::from);
+        let program_files = env::var_os("ProgramFiles").map(PathBuf::from);
+        let program_files_x86 = env::var_os("ProgramFiles(x86)").map(PathBuf::from);
 
         let xdg_cache_home = Some(
             env::var_os("XDG_CACHE_HOME")
@@ -64,6 +68,8 @@ impl ScanContext {
             local_app_data,
             roaming_app_data,
             program_data,
+            program_files,
+            program_files_x86,
             xdg_cache_home,
             xdg_data_home,
         })

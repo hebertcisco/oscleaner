@@ -60,6 +60,7 @@ category_flags!(
     (windows_thumbnail, "windows_thumbnail", "Windows thumbnail cache"),
     (windows_prefetch,  "windows_prefetch",  "Windows prefetch files"),
     (windows_wer,       "windows_wer",       "Windows error reporting data"),
+    (windows_dev_leftovers, "windows_dev_leftovers", "Potential leftovers from removed dev and AI tools on Windows"),
     (browser_caches,    "browser_caches",    "Browser caches (Chrome, Firefox, Edge, Brave, Safari)"),
     (linux_cache,       "linux_cache",       "Linux user cache (~/.cache)"),
     (linux_logs,        "linux_logs",        "Linux system and user logs"),
