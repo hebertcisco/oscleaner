@@ -41,6 +41,7 @@ A cross-platform system cleanup CLI tool written in Rust to free up disk space b
 -   **iOS Backups:** Old device backups in `~/Library/Application Support/MobileSync/Backup`.
 -   **Homebrew:** Cache at `~/Library/Caches/Homebrew`.
 -   **Email Attachments:** Downloaded email attachments cache.
+-   **Dev App Leftovers:** Potential leftovers from removed macOS dev/AI tools such as Cursor (`~/.cursor`), Gemini CLI (`~/.gemini`), Junie (`~/.junie`), Windsurf, Zed, Warp, Postman, Insomnia, GitHub Desktop, and Claude.
 
 ### System Caches (Windows)
 
@@ -61,6 +62,7 @@ A cross-platform system cleanup CLI tool written in Rust to free up disk space b
 -   **XDG Trash:** `~/.local/share/Trash`.
 -   **Snap Cache:** Snap package caches.
 -   **Flatpak Cache:** Flatpak application caches.
+-   **Dev App Leftovers:** Potential leftovers from removed Linux dev/AI tools such as Cursor (`~/.cursor`), Gemini CLI (`~/.gemini`), Junie (`~/.junie`), Windsurf, Zed, Warp, Postman, Insomnia, and Claude.
 
 ## Installation
 
@@ -125,7 +127,7 @@ cargo install --path .
     -   `--min-age <DAYS>` — only delete items older than N days (default: 2 in safe mode).
     -   `--all` — include every category available on the current platform.
     -   `--category <id>` — target a category by id (repeatable).
-    -   Category shortcuts (use any combination): `--node-modules`, `--docker`, `--xcode`, `--android-builds`, `--react-native-ios`, `--gradle-cache`, `--maven-cache`, `--cargo-targets`, `--php-vendor`, `--ruby-vendor`, `--python-cache`, `--cocoapods-cache`, `--mac-caches`, `--mac-logs`, `--mac-tmp`, `--ios-backups`, `--homebrew-cache`, `--mail-downloads`, `--windows-temp`, `--windows-update`, `--windows-thumbnail`, `--windows-prefetch`, `--windows-wer`, `--windows-dev-leftovers`, `--browser-caches`, `--linux-cache`, `--linux-logs`, `--linux-tmp`, `--linux-journal`, `--linux-coredumps`, `--linux-trash`, `--snap-cache`, `--flatpak-cache`.
+    -   Category shortcuts (use any combination): `--node-modules`, `--docker`, `--xcode`, `--android-builds`, `--react-native-ios`, `--gradle-cache`, `--maven-cache`, `--cargo-targets`, `--php-vendor`, `--ruby-vendor`, `--python-cache`, `--cocoapods-cache`, `--mac-caches`, `--mac-logs`, `--mac-tmp`, `--ios-backups`, `--homebrew-cache`, `--mail-downloads`, `--mac-dev-leftovers`, `--windows-temp`, `--windows-update`, `--windows-thumbnail`, `--windows-prefetch`, `--windows-wer`, `--windows-dev-leftovers`, `--browser-caches`, `--linux-cache`, `--linux-logs`, `--linux-tmp`, `--linux-journal`, `--linux-coredumps`, `--linux-trash`, `--snap-cache`, `--flatpak-cache`, `--linux-dev-leftovers`.
 
 If you supply category flags without a subcommand, `oscleaner` will default to running `clean` with those selections.
 

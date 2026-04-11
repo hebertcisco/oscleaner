@@ -55,6 +55,7 @@ category_flags!(
     (ios_backups,       "ios_backups",       "iOS device backups (macOS)"),
     (homebrew_cache,    "homebrew_cache",    "Homebrew cache (macOS)"),
     (mail_downloads,    "mail_downloads",    "Mail downloads cache (macOS)"),
+    (mac_dev_leftovers, "mac_dev_leftovers", "Potential leftovers from removed dev and AI tools on macOS"),
     (windows_temp,      "windows_temp",      "Windows temp folder"),
     (windows_update,    "windows_update",    "Windows Update cache"),
     (windows_thumbnail, "windows_thumbnail", "Windows thumbnail cache"),
@@ -70,6 +71,7 @@ category_flags!(
     (linux_trash,       "linux_trash",       "Linux XDG Trash"),
     (snap_cache,        "snap_cache",        "Snap package caches"),
     (flatpak_cache,     "flatpak_cache",     "Flatpak app caches"),
+    (linux_dev_leftovers, "linux_dev_leftovers", "Potential leftovers from removed dev and AI tools on Linux"),
 );
 
 #[derive(Parser, Debug, Default)]
