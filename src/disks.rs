@@ -15,9 +15,12 @@ pub fn available_windows_disks(system_drive: Option<&Path>) -> Vec<WindowsDisk> 
 
 #[cfg(target_os = "windows")]
 fn available_windows_disks_impl(system_drive: Option<&Path>) -> Vec<WindowsDisk> {
-    use windows_sys::Win32::Storage::FileSystem::{
-        DRIVE_FIXED, DRIVE_RAMDISK, DRIVE_REMOTE, DRIVE_REMOVABLE, GetDriveTypeW, GetLogicalDrives,
-    };
+    use windows_sys::Win32::Storage::FileSystem::{GetDriveTypeW, GetLogicalDrives};
+
+    const DRIVE_REMOVABLE: u32 = 2;
+    const DRIVE_FIXED: u32 = 3;
+    const DRIVE_REMOTE: u32 = 4;
+    const DRIVE_RAMDISK: u32 = 6;
 
     let system_root = system_drive.map(normalize_drive_root);
     let mut disks = Vec::new();

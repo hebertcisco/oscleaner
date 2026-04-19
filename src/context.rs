@@ -68,7 +68,7 @@ impl ScanContext {
         );
         let system_drive = env::var_os("SystemDrive")
             .map(PathBuf::from)
-            .map(normalize_windows_drive_root);
+            .map(|path| normalize_windows_drive_root(&path));
 
         let search_roots = build_search_roots(&home, &cwd);
 
