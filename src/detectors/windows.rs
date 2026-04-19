@@ -99,10 +99,7 @@ const INSOMNIA_LEFTOVERS: &[WindowsPathSpec] = &[
 ];
 
 const GITHUB_DESKTOP_INSTALL_MARKERS: &[WindowsPathSpec] = &[
-    win_path(
-        WindowsRoot::LocalAppData,
-        "GitHubDesktop/GitHubDesktop.exe",
-    ),
+    win_path(WindowsRoot::LocalAppData, "GitHubDesktop/GitHubDesktop.exe"),
     win_path(
         WindowsRoot::LocalAppData,
         "Programs/GitHub Desktop/GitHubDesktop.exe",
@@ -332,6 +329,8 @@ mod tests {
             xdg_cache_home: None,
             xdg_config_home: None,
             xdg_data_home: None,
+            system_drive: Some(PathBuf::from("C:\\")),
+            selected_drive: None,
         }
     }
 

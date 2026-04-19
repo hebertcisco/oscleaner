@@ -201,7 +201,10 @@ fn resolve_linux_path(ctx: &ScanContext, spec: LinuxPathSpec) -> Option<PathBuf>
         LinuxRoot::XdgCache => ctx.xdg_cache_home.as_ref()?.join(spec.relative),
         LinuxRoot::XdgData => ctx.xdg_data_home.as_ref()?.join(spec.relative),
         LinuxRoot::LocalBin => ctx.home.join(".local/bin").join(spec.relative),
-        LinuxRoot::UserShareApplications => ctx.home.join(".local/share/applications").join(spec.relative),
+        LinuxRoot::UserShareApplications => ctx
+            .home
+            .join(".local/share/applications")
+            .join(spec.relative),
         LinuxRoot::Opt => PathBuf::from("/opt").join(spec.relative),
         LinuxRoot::UsrBin => PathBuf::from("/usr/bin").join(spec.relative),
         LinuxRoot::UsrLocalBin => PathBuf::from("/usr/local/bin").join(spec.relative),
@@ -427,6 +430,8 @@ mod tests {
             xdg_cache_home: Some(cache),
             xdg_config_home: Some(config),
             xdg_data_home: Some(data),
+            system_drive: None,
+            selected_drive: None,
         }
     }
 

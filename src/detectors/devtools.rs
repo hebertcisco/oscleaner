@@ -60,9 +60,7 @@ pub fn detect_android_builds(ctx: &ScanContext) -> Vec<PathBuf> {
 pub fn detect_react_native_ios(ctx: &ScanContext) -> Vec<PathBuf> {
     walk_roots(&ctx.search_roots, 6)
         .into_iter()
-        .filter(|e| {
-            e.file_type().is_dir() && (e.file_name() == "Pods" || e.file_name() == "build")
-        })
+        .filter(|e| e.file_type().is_dir() && (e.file_name() == "Pods" || e.file_name() == "build"))
         .filter(|e| {
             e.path()
                 .parent()

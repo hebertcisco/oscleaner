@@ -39,7 +39,10 @@ const CURSOR_MAC_LEFTOVERS: &[MacPathSpec] = &[
     mac_path(MacRoot::Home, ".cursor"),
     mac_path(MacRoot::LibraryApplicationSupport, "Cursor"),
     mac_path(MacRoot::LibraryCaches, "Cursor"),
-    mac_path(MacRoot::LibraryPreferences, "com.todesktop.230313mzl4w4u92.plist"),
+    mac_path(
+        MacRoot::LibraryPreferences,
+        "com.todesktop.230313mzl4w4u92.plist",
+    ),
     mac_path(
         MacRoot::LibrarySavedState,
         "com.todesktop.230313mzl4w4u92.savedState",
@@ -54,7 +57,10 @@ const WINDSURF_MAC_LEFTOVERS: &[MacPathSpec] = &[
     mac_path(MacRoot::Home, ".codeium/windsurf"),
     mac_path(MacRoot::LibraryApplicationSupport, "Windsurf"),
     mac_path(MacRoot::LibraryCaches, "Windsurf"),
-    mac_path(MacRoot::LibraryPreferences, "com.exafunction.windsurf.plist"),
+    mac_path(
+        MacRoot::LibraryPreferences,
+        "com.exafunction.windsurf.plist",
+    ),
 ];
 
 const ZED_MAC_INSTALL_MARKERS: &[MacPathSpec] = &[
@@ -75,10 +81,7 @@ const WARP_MAC_LEFTOVERS: &[MacPathSpec] = &[
     mac_path(MacRoot::Home, ".warp"),
     mac_path(MacRoot::LibraryApplicationSupport, "dev.warp.Warp-Stable"),
     mac_path(MacRoot::LibraryCaches, "dev.warp.Warp-Stable"),
-    mac_path(
-        MacRoot::LibraryPreferences,
-        "dev.warp.Warp-Stable.plist",
-    ),
+    mac_path(MacRoot::LibraryPreferences, "dev.warp.Warp-Stable.plist"),
 ];
 
 const POSTMAN_MAC_INSTALL_MARKERS: &[MacPathSpec] = &[
@@ -108,7 +111,10 @@ const CLAUDE_MAC_INSTALL_MARKERS: &[MacPathSpec] = &[
 const CLAUDE_MAC_LEFTOVERS: &[MacPathSpec] = &[
     mac_path(MacRoot::LibraryApplicationSupport, "Claude"),
     mac_path(MacRoot::LibraryCaches, "Claude"),
-    mac_path(MacRoot::LibraryPreferences, "com.anthropic.claudefordesktop.plist"),
+    mac_path(
+        MacRoot::LibraryPreferences,
+        "com.anthropic.claudefordesktop.plist",
+    ),
 ];
 
 const GITHUB_DESKTOP_MAC_INSTALL_MARKERS: &[MacPathSpec] = &[
@@ -259,7 +265,10 @@ pub fn detect_mac_logs(ctx: &ScanContext) -> Vec<PathBuf> {
         return Vec::new();
     }
     let mut paths = Vec::new();
-    for dir in &[ctx.home.join("Library/Logs"), PathBuf::from("/Library/Logs")] {
+    for dir in &[
+        ctx.home.join("Library/Logs"),
+        PathBuf::from("/Library/Logs"),
+    ] {
         if dir.exists() {
             paths.extend(list_children(dir));
         }
@@ -373,6 +382,8 @@ mod tests {
             xdg_cache_home: Some(home.join(".cache")),
             xdg_config_home: Some(home.join(".config")),
             xdg_data_home: Some(home.join(".local/share")),
+            system_drive: None,
+            selected_drive: None,
         }
     }
 

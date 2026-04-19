@@ -6,17 +6,18 @@ use console::style;
 use indicatif::HumanBytes;
 use serde::Serialize;
 
-use crate::categories::{build_categories, CleanupCategory};
+use crate::categories::{CleanupCategory, build_categories};
 use crate::cleanup::{perform_cleanup, print_report};
 use crate::cli::{
-    confirm_cleanup, confirm_dry_run, print_banner, print_categories_table,
-    prompt_category_selection, prompt_item_selection, prompt_main_action, show_summary, CliOptions,
-    RunMode,
+    CliOptions, RunMode, confirm_cleanup, confirm_dry_run, print_banner, print_categories_table,
+    prompt_category_selection, prompt_item_selection, prompt_main_action,
+    prompt_windows_disk_selection, show_summary,
 };
 use crate::context::ScanContext;
+use crate::disks::available_windows_disks;
 use crate::safe::{self, SafeConfig};
 use crate::scanner::{filter_findings, scan_categories, summarize_findings};
-use crate::types::{CategorySummary, CleanReport, Finding};
+use crate::types::{CategorySummary, CleanReport, Finding, OsKind};
 
 #[derive(Serialize)]
 struct JsonScanOutput {
@@ -69,11 +70,13 @@ pub fn run() -> Result<()> {
                 let cats: Vec<_> = categories
                     .iter()
                     .filter(|c| c.platform.matches(ctx.os))
-                    .map(|c| serde_json::json!({
-                        "id": c.id,
-                        "name": c.name,
-                        "description": c.description,
-                    }))
+                    .map(|c| {
+                        serde_json::json!({
+                            "id": c.id,
+                            "name": c.name,
+                            "description": c.description,
+                        })
+                    })
                     .collect();
                 println!("{}", serde_json::to_string(&cats)?);
             } else {
@@ -81,7 +84,13 @@ pub fn run() -> Result<()> {
             }
         }
         RunMode::Scan => {
-            run_scan_command(&categories, &ctx, &requested_ids, opts.targets().all, opts.json)?;
+            run_scan_command(
+                &categories,
+                &ctx,
+                &requested_ids,
+                opts.targets().all,
+                opts.json,
+            )?;
         }
         RunMode::Clean => {
             run_clean_command(&categories, &ctx, &requested_ids, &opts)?;
@@ -156,15 +165,18 @@ fn run_clean_command(
 
     if findings.is_empty() {
         if json {
-            println!("{}", serde_json::to_string(&JsonCleanOutput {
-                report: CleanReport {
-                    dry_run: opts.dry_run,
-                    attempted: 0,
-                    succeeded: 0,
-                    freed_bytes: 0,
-                    errors: vec![],
-                },
-            })?);
+            println!(
+                "{}",
+                serde_json::to_string(&JsonCleanOutput {
+                    report: CleanReport {
+                        dry_run: opts.dry_run,
+                        attempted: 0,
+                        succeeded: 0,
+                        freed_bytes: 0,
+                        errors: vec![],
+                    },
+                })?
+            );
         } else {
             println!(
                 "{}",
@@ -190,15 +202,18 @@ fn run_clean_command(
 
     if findings.is_empty() {
         if json {
-            println!("{}", serde_json::to_string(&JsonCleanOutput {
-                report: CleanReport {
-                    dry_run: opts.dry_run,
-                    attempted: 0,
-                    succeeded: 0,
-                    freed_bytes: 0,
-                    errors: vec![],
-                },
-            })?);
+            println!(
+                "{}",
+                serde_json::to_string(&JsonCleanOutput {
+                    report: CleanReport {
+                        dry_run: opts.dry_run,
+                        attempted: 0,
+                        succeeded: 0,
+                        freed_bytes: 0,
+                        errors: vec![],
+                    },
+                })?
+            );
         } else {
             println!(
                 "{}",
@@ -295,7 +310,8 @@ fn run_clean_command(
         print_report(&report);
 
         if let Some(ref cfg) = safe_config
-            && let Err(err) = safe::write_safe_log(&ctx.home, &report, &final_items, &skipped_reasons, cfg)
+            && let Err(err) =
+                safe::write_safe_log(&ctx.home, &report, &final_items, &skipped_reasons, cfg)
         {
             eprintln!(
                 "{} Failed to write safe run log: {}",
@@ -318,7 +334,16 @@ fn run_interactive_flow(
         return Ok(());
     }
 
-    let (findings, scan_duration) = run_scan(categories, ctx, false)?;
+    let scan_ctx = build_interactive_scan_context(ctx)?;
+    if let Some(selected_drive) = scan_ctx.selected_drive() {
+        println!(
+            "{} {}",
+            style("Drive scope:").dim(),
+            style(selected_drive.display()).cyan()
+        );
+    }
+
+    let (findings, scan_duration) = run_scan(categories, &scan_ctx, false)?;
     if findings.is_empty() {
         println!(
             "{}",
@@ -373,6 +398,21 @@ fn run_interactive_flow(
     Ok(())
 }
 
+fn build_interactive_scan_context(ctx: &ScanContext) -> Result<ScanContext> {
+    if ctx.os != OsKind::Windows {
+        return Ok(ctx.clone());
+    }
+
+    let disks = available_windows_disks(ctx.system_drive());
+    if disks.is_empty() {
+        return Ok(ctx.clone());
+    }
+
+    let selected_idx = prompt_windows_disk_selection(&disks)?;
+    let selected_disk = &disks[selected_idx];
+    Ok(ctx.with_selected_drive(&selected_disk.root))
+}
+
 fn pick_categories(
     all: &[CleanupCategory],
     requested_ids: &HashSet<&'static str>,
@@ -421,7 +461,7 @@ fn scan_categories_quiet(
 
         let paths = (cat.detector)(ctx);
         for path in paths {
-            if !path.exists() || !seen.insert(path.clone()) {
+            if !path.exists() || !ctx.is_path_in_scope(&path) || !seen.insert(path.clone()) {
                 continue;
             }
 

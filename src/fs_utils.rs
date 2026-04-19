@@ -89,10 +89,7 @@ pub fn calc_size(path: &Path) -> io::Result<u64> {
 
 pub fn list_children(dir: &Path) -> Vec<PathBuf> {
     match std::fs::read_dir(dir) {
-        Ok(entries) => entries
-            .filter_map(|e| e.ok())
-            .map(|e| e.path())
-            .collect(),
+        Ok(entries) => entries.filter_map(|e| e.ok()).map(|e| e.path()).collect(),
         Err(_) => Vec::new(),
     }
 }

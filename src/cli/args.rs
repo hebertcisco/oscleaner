@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::{Args, Parser, Subcommand};
 
 use crate::categories::CleanupCategory;
@@ -35,47 +35,111 @@ macro_rules! category_flags {
 }
 
 category_flags!(
-    (node_modules,      "node_modules",      "Node.js node_modules folders"),
-    (docker,            "docker",            "Docker caches, images, containers, and build data"),
-    (xcode,             "xcode",             "Xcode DerivedData and archives (macOS)"),
-    (android_builds,    "android_builds",    "Android build folders"),
-    (react_native_ios,  "react_native_ios",  "React Native iOS Pods/builds"),
-    (gradle_cache,      "gradle_cache",      "Gradle cache"),
-    (maven_cache,       "maven_cache",       "Maven repository cache"),
-    (cargo_targets,     "cargo_targets",     "Cargo target directories"),
-    (php_vendor,        "php_vendor",        "PHP vendor directories (Composer)"),
-    (ruby_vendor,       "ruby_vendor",       "Ruby vendor directories (Bundler)"),
-    (python_cache,      "python_cache",      "Python __pycache__, pyc files, and virtualenvs"),
-    (java_heap_dumps,   "java_heap_dumps",   "Java heap dump files (.hprof)"),
-    (apk_artifacts,     "apk_artifacts",     "Android APK artifacts"),
-    (cocoapods_cache,   "cocoapods_cache",   "CocoaPods cache (macOS)"),
-    (mac_caches,        "mac_caches",        "macOS user caches"),
-    (mac_logs,          "mac_logs",          "macOS system and user logs"),
-    (mac_tmp,           "mac_tmp",           "macOS temporary files"),
-    (ios_backups,       "ios_backups",       "iOS device backups (macOS)"),
-    (homebrew_cache,    "homebrew_cache",    "Homebrew cache (macOS)"),
-    (mail_downloads,    "mail_downloads",    "Mail downloads cache (macOS)"),
-    (mac_dev_leftovers, "mac_dev_leftovers", "Potential leftovers from removed dev and AI tools on macOS"),
-    (windows_temp,      "windows_temp",      "Windows temp folder"),
-    (windows_update,    "windows_update",    "Windows Update cache"),
-    (windows_thumbnail, "windows_thumbnail", "Windows thumbnail cache"),
-    (windows_prefetch,  "windows_prefetch",  "Windows prefetch files"),
-    (windows_wer,       "windows_wer",       "Windows error reporting data"),
-    (windows_dev_leftovers, "windows_dev_leftovers", "Potential leftovers from removed dev and AI tools on Windows"),
-    (browser_caches,    "browser_caches",    "Browser caches (Chrome, Firefox, Edge, Brave, Safari)"),
-    (linux_cache,       "linux_cache",       "Linux user cache (~/.cache)"),
-    (linux_logs,        "linux_logs",        "Linux system and user logs"),
-    (linux_tmp,         "linux_tmp",         "Linux temporary files (/tmp, /var/tmp)"),
-    (linux_journal,     "linux_journal",     "Systemd journal logs"),
-    (linux_coredumps,   "linux_coredumps",   "Linux core dumps"),
-    (linux_trash,       "linux_trash",       "Linux XDG Trash"),
-    (snap_cache,        "snap_cache",        "Snap package caches"),
-    (flatpak_cache,     "flatpak_cache",     "Flatpak app caches"),
-    (linux_dev_leftovers, "linux_dev_leftovers", "Potential leftovers from removed dev and AI tools on Linux"),
+    (node_modules, "node_modules", "Node.js node_modules folders"),
+    (
+        docker,
+        "docker",
+        "Docker caches, images, containers, and build data"
+    ),
+    (xcode, "xcode", "Xcode DerivedData and archives (macOS)"),
+    (android_builds, "android_builds", "Android build folders"),
+    (
+        react_native_ios,
+        "react_native_ios",
+        "React Native iOS Pods/builds"
+    ),
+    (gradle_cache, "gradle_cache", "Gradle cache"),
+    (maven_cache, "maven_cache", "Maven repository cache"),
+    (cargo_targets, "cargo_targets", "Cargo target directories"),
+    (
+        php_vendor,
+        "php_vendor",
+        "PHP vendor directories (Composer)"
+    ),
+    (
+        ruby_vendor,
+        "ruby_vendor",
+        "Ruby vendor directories (Bundler)"
+    ),
+    (
+        python_cache,
+        "python_cache",
+        "Python __pycache__, pyc files, and virtualenvs"
+    ),
+    (
+        java_heap_dumps,
+        "java_heap_dumps",
+        "Java heap dump files (.hprof)"
+    ),
+    (apk_artifacts, "apk_artifacts", "Android APK artifacts"),
+    (
+        cocoapods_cache,
+        "cocoapods_cache",
+        "CocoaPods cache (macOS)"
+    ),
+    (mac_caches, "mac_caches", "macOS user caches"),
+    (mac_logs, "mac_logs", "macOS system and user logs"),
+    (mac_tmp, "mac_tmp", "macOS temporary files"),
+    (ios_backups, "ios_backups", "iOS device backups (macOS)"),
+    (homebrew_cache, "homebrew_cache", "Homebrew cache (macOS)"),
+    (
+        mail_downloads,
+        "mail_downloads",
+        "Mail downloads cache (macOS)"
+    ),
+    (
+        mac_dev_leftovers,
+        "mac_dev_leftovers",
+        "Potential leftovers from removed dev and AI tools on macOS"
+    ),
+    (windows_temp, "windows_temp", "Windows temp folder"),
+    (windows_update, "windows_update", "Windows Update cache"),
+    (
+        windows_thumbnail,
+        "windows_thumbnail",
+        "Windows thumbnail cache"
+    ),
+    (
+        windows_prefetch,
+        "windows_prefetch",
+        "Windows prefetch files"
+    ),
+    (windows_wer, "windows_wer", "Windows error reporting data"),
+    (
+        windows_dev_leftovers,
+        "windows_dev_leftovers",
+        "Potential leftovers from removed dev and AI tools on Windows"
+    ),
+    (
+        browser_caches,
+        "browser_caches",
+        "Browser caches (Chrome, Firefox, Edge, Brave, Safari)"
+    ),
+    (linux_cache, "linux_cache", "Linux user cache (~/.cache)"),
+    (linux_logs, "linux_logs", "Linux system and user logs"),
+    (
+        linux_tmp,
+        "linux_tmp",
+        "Linux temporary files (/tmp, /var/tmp)"
+    ),
+    (linux_journal, "linux_journal", "Systemd journal logs"),
+    (linux_coredumps, "linux_coredumps", "Linux core dumps"),
+    (linux_trash, "linux_trash", "Linux XDG Trash"),
+    (snap_cache, "snap_cache", "Snap package caches"),
+    (flatpak_cache, "flatpak_cache", "Flatpak app caches"),
+    (
+        linux_dev_leftovers,
+        "linux_dev_leftovers",
+        "Potential leftovers from removed dev and AI tools on Linux"
+    ),
 );
 
 #[derive(Parser, Debug, Default)]
-#[command(name = "oscleaner", version, about = "Scan, preview, and clean development/system clutter")]
+#[command(
+    name = "oscleaner",
+    version,
+    about = "Scan, preview, and clean development/system clutter"
+)]
 pub struct CliOptions {
     #[arg(
         short = 'n',

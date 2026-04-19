@@ -33,6 +33,9 @@ pub fn scan_categories(categories: &[CleanupCategory], ctx: &ScanContext) -> Res
             if !path.exists() {
                 continue;
             }
+            if !ctx.is_path_in_scope(&path) {
+                continue;
+            }
             if !seen.insert(path.clone()) {
                 continue;
             }

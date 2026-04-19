@@ -53,9 +53,7 @@ pub fn perform_cleanup(items: &[&Finding], dry_run: bool) -> CleanReport {
         }
 
         let result = if item.is_dir {
-            fs::remove_dir_all(&item.path).or_else(|_| {
-                remove_dir_contents(&item.path).map(|_| ())
-            })
+            fs::remove_dir_all(&item.path).or_else(|_| remove_dir_contents(&item.path).map(|_| ()))
         } else {
             fs::remove_file(&item.path)
         };
