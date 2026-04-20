@@ -156,6 +156,13 @@ pub fn build_categories() -> Vec<CleanupCategory> {
             detector: detect_mail_downloads,
         },
         CleanupCategory {
+            id: "mac_dev_leftovers",
+            name: "macOS dev app leftovers",
+            description: "Potential leftovers from removed dev/AI tools like Cursor, Gemini CLI, Junie, Windsurf, Zed, Warp, Postman, Insomnia, GitHub Desktop, and Claude",
+            platform: Platform::Mac,
+            detector: detect_mac_dev_tool_leftovers,
+        },
+        CleanupCategory {
             id: "windows_temp",
             name: "Windows temp files",
             description: "%TEMP% temporary files",
@@ -189,6 +196,13 @@ pub fn build_categories() -> Vec<CleanupCategory> {
             description: "WER report archives",
             platform: Platform::Windows,
             detector: detect_windows_wer,
+        },
+        CleanupCategory {
+            id: "windows_dev_leftovers",
+            name: "Windows dev app leftovers",
+            description: "Potential leftovers from removed dev/AI tools like Cursor, Gemini CLI, Junie, Windsurf, Zed, Warp, Postman, Insomnia, GitHub Desktop, and Claude",
+            platform: Platform::Windows,
+            detector: detect_windows_dev_tool_leftovers,
         },
         CleanupCategory {
             id: "browser_caches",
@@ -252,6 +266,13 @@ pub fn build_categories() -> Vec<CleanupCategory> {
             description: "Flatpak app caches and temporary data",
             platform: Platform::Linux,
             detector: detect_flatpak_cache,
+        },
+        CleanupCategory {
+            id: "linux_dev_leftovers",
+            name: "Linux dev app leftovers",
+            description: "Potential leftovers from removed dev/AI tools like Cursor, Gemini CLI, Junie, Windsurf, Zed, Warp, Postman, Insomnia, and Claude",
+            platform: Platform::Linux,
+            detector: detect_linux_dev_tool_leftovers,
         },
     ]
 }

@@ -1,6 +1,6 @@
 [package]
 name = "oscleaner"
-version = "1.1.1"
+version = "1.2.1"
 edition = "2024"
 authors = ["Hebert Cisco <hebertcisco@outlook.com>"]
 description = "Cross-platform system cleanup CLI to free up disk space"
@@ -20,6 +20,7 @@ indicatif = "0.17"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 walkdir = "2.5"
+windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem"] }
 
 [dev-dependencies]
 tempfile = "3"

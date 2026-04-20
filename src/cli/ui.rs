@@ -8,6 +8,7 @@ use indicatif::HumanBytes;
 
 use crate::categories::CleanupCategory;
 use crate::context::ScanContext;
+use crate::disks::WindowsDisk;
 use crate::types::{CategorySummary, Finding, OsKind, Platform};
 
 pub fn print_banner(ctx: &ScanContext) {
@@ -38,6 +39,21 @@ pub fn prompt_main_action() -> Result<bool> {
         .default(0)
         .interact()?;
     Ok(choice == 0)
+}
+
+pub fn prompt_windows_disk_selection(disks: &[WindowsDisk]) -> Result<usize> {
+    let options: Vec<&str> = disks.iter().map(|disk| disk.label.as_str()).collect();
+    let default_idx = disks
+        .iter()
+        .position(|disk| disk.is_system_drive)
+        .unwrap_or(0);
+
+    Select::new()
+        .with_prompt("Select the Windows drive to analyze")
+        .items(&options)
+        .default(default_idx)
+        .interact()
+        .map_err(Into::into)
 }
 
 pub fn show_summary(summaries: &[CategorySummary], duration: Duration) {
@@ -119,7 +135,10 @@ pub fn prompt_item_selection<'a>(items: &'a [&'a Finding]) -> Result<Vec<&'a Fin
         .defaults(&defaults)
         .interact()?;
 
-    Ok(selections.into_iter().filter_map(|i| items.get(i).copied()).collect())
+    Ok(selections
+        .into_iter()
+        .filter_map(|i| items.get(i).copied())
+        .collect())
 }
 
 pub fn confirm_dry_run(force_dry_run: bool) -> Result<bool> {

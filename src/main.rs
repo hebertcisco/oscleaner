@@ -4,6 +4,7 @@ mod cleanup;
 mod cli;
 mod context;
 mod detectors;
+mod disks;
 mod fs_utils;
 mod safe;
 mod scanner;

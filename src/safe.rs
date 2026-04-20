@@ -160,11 +160,7 @@ pub fn filter_safe(findings: Vec<Finding>, config: &SafeConfig) -> (Vec<Finding>
 
 pub fn exceeds_size_limit(findings: &[Finding], max_bytes: u64) -> Option<u64> {
     let total: u64 = findings.iter().map(|f| f.size).sum();
-    if total > max_bytes {
-        Some(total)
-    } else {
-        None
-    }
+    if total > max_bytes { Some(total) } else { None }
 }
 
 pub fn write_safe_log(
@@ -224,7 +220,9 @@ pub fn write_safe_log(
     writeln!(
         file,
         "Result: attempted={}, succeeded={}, freed={}",
-        report.attempted, report.succeeded, HumanBytes(report.freed_bytes)
+        report.attempted,
+        report.succeeded,
+        HumanBytes(report.freed_bytes)
     )?;
 
     if !report.errors.is_empty() {
