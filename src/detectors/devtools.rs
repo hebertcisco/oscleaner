@@ -77,24 +77,10 @@ pub fn detect_android_builds(ctx: &ScanContext) -> Vec<PathBuf> {
 
 pub fn detect_react_native_ios(ctx: &ScanContext) -> Vec<PathBuf> {
     unique_existing_paths(
-        walk_roots(&ctx.search_roots, 6)
+        walk_roots(&ctx.search_roots, 10)
             .into_iter()
-            .filter(|e| {
-                e.file_type().is_dir() && (e.file_name() == "Pods" || e.file_name() == "build")
-            })
-            .filter(|e| {
-                let Some(ios_dir) = e.path().parent() else {
-                    return false;
-                };
-                if ios_dir.file_name().map(|f| f == "ios").unwrap_or(false) {
-                    return ios_dir
-                        .parent()
-                        .map(is_react_native_project_root)
-                        .unwrap_or(false);
-                }
-                false
-            })
-            .map(|e| e.path().to_path_buf()),
+            .filter(|e| e.file_type().is_dir())
+            .filter_map(|e| react_native_ios_artifact_path(e.path())),
     )
 }
 
@@ -323,6 +309,31 @@ fn existing_children(root: &Path, relative_paths: &[&str]) -> Vec<PathBuf> {
         .collect()
 }
 
+fn react_native_ios_artifact_path(path: &Path) -> Option<PathBuf> {
+    let name = path.file_name()?;
+    let (artifact, ios_dir) = if name == "Pods" || name == "build" {
+        (path, path.parent()?)
+    } else if name == "Headers" {
+        let pods_dir = path.parent()?;
+        if pods_dir.file_name().map(|f| f == "Pods").unwrap_or(false) {
+            (pods_dir, pods_dir.parent()?)
+        } else {
+            return None;
+        }
+    } else {
+        return None;
+    };
+
+    if !ios_dir.file_name().map(|f| f == "ios").unwrap_or(false) {
+        return None;
+    }
+
+    ios_dir
+        .parent()
+        .filter(|project_root| is_react_native_project_root(project_root))
+        .map(|_| artifact.to_path_buf())
+}
+
 fn unique_existing_paths(paths: impl IntoIterator<Item = PathBuf>) -> Vec<PathBuf> {
     let mut seen = HashSet::new();
     paths
@@ -539,6 +550,23 @@ mod tests {
         assert!(paths.contains(&rn.join("ios/Pods")));
         assert!(paths.contains(&rn.join("ios/build")));
         assert!(!paths.contains(&native.join("ios/Pods")));
+    }
+
+    #[test]
+    fn detects_deep_react_native_ios_pods_from_headers_path() {
+        let tmp = tempdir().unwrap();
+        let rn = tmp
+            .path()
+            .join("Documents/www/www/tradio/WL/pagnorteapp-react");
+        fs::create_dir_all(rn.join("ios/Pods/Headers/Public/React-callinvoker")).unwrap();
+        fs::write(
+            rn.join("package.json"),
+            r#"{"dependencies":{"react-native":"0.80.0"}}"#,
+        )
+        .unwrap();
+
+        let paths = detect_react_native_ios(&test_context(tmp.path().to_path_buf()));
+        assert!(paths.contains(&rn.join("ios/Pods")));
     }
 
     #[test]

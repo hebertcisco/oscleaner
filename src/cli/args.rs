@@ -46,7 +46,7 @@ category_flags!(
     (
         react_native_ios,
         "react_native_ios",
-        "React Native iOS Pods/builds"
+        "React Native iOS Pods, Headers, and builds"
     ),
     (
         ios_project_builds,

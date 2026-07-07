@@ -46,7 +46,7 @@ pub fn build_categories() -> Vec<CleanupCategory> {
         CleanupCategory {
             id: "react_native_ios",
             name: "React Native iOS Pods/builds",
-            description: "ios/Pods and ios/build directories",
+            description: "ios/Pods, ios/Pods/Headers, and ios/build directories",
             platform: Platform::All,
             detector: detect_react_native_ios,
         },
