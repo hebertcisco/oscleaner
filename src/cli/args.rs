@@ -48,9 +48,31 @@ category_flags!(
         "react_native_ios",
         "React Native iOS Pods/builds"
     ),
+    (
+        ios_project_builds,
+        "ios_project_builds",
+        "Native iOS and Swift project build folders"
+    ),
+    (
+        web_project_builds,
+        "web_project_builds",
+        "Expo, Angular, Next.js, and NestJS build outputs"
+    ),
+    (
+        jvm_builds,
+        "jvm_builds",
+        "Java, Spring, Maven, and Gradle project build outputs"
+    ),
     (gradle_cache, "gradle_cache", "Gradle cache"),
     (maven_cache, "maven_cache", "Maven repository cache"),
     (cargo_targets, "cargo_targets", "Cargo target directories"),
+    (
+        rails_artifacts,
+        "rails_artifacts",
+        "Ruby on Rails build and cache artifacts"
+    ),
+    (go_builds, "go_builds", "Go build outputs"),
+    (cpp_builds, "cpp_builds", "C/C++ build outputs"),
     (
         php_vendor,
         "php_vendor",

@@ -23,12 +23,18 @@ A cross-platform system cleanup CLI tool written in Rust to free up disk space b
 -   **Docker:** Unused images, containers, volumes, and build cache.
 -   **Android:** `android/build` and `**/build/` folders in Android projects.
 -   **React Native:** `ios/Pods`, `ios/build` (for iOS) and Android build artifacts.
+-   **iOS/Swift:** Native iOS `Pods`, local `build`, and SwiftPM `.build` directories.
+-   **Web frameworks:** Expo, Angular, Next.js, and NestJS build/cache outputs.
+-   **Java/Spring:** Maven/Gradle `target`, `build`, and `out` directories.
 -   **Gradle:** Caches located at `~/.gradle/caches`.
 -   **Maven:** Caches located at `~/.m2/repository`.
 -   **Rust:** `target/` directories in Cargo projects.
+-   **Go:** `build` and `dist` directories from Go projects.
+-   **C/C++:** `build`, `out`, and `cmake-build-*` directories.
 -   **Python:** `__pycache__` directories, `.pyc` files, and virtual environments.
 -   **PHP:** `vendor` directories (Composer).
 -   **Ruby:** `vendor` directories (Bundler).
+-   **Ruby on Rails:** `tmp/cache` and compiled public asset directories.
 -   **Browser Caches:** Chrome, Firefox, Safari, Edge, and Brave cache directories.
 
 ### System Caches (macOS)
@@ -127,7 +133,7 @@ cargo install --path .
     -   `--min-age <DAYS>` — only delete items older than N days (default: 2 in safe mode).
     -   `--all` — include every category available on the current platform.
     -   `--category <id>` — target a category by id (repeatable).
-    -   Category shortcuts (use any combination): `--node-modules`, `--docker`, `--xcode`, `--android-builds`, `--react-native-ios`, `--gradle-cache`, `--maven-cache`, `--cargo-targets`, `--php-vendor`, `--ruby-vendor`, `--python-cache`, `--cocoapods-cache`, `--mac-caches`, `--mac-logs`, `--mac-tmp`, `--ios-backups`, `--homebrew-cache`, `--mail-downloads`, `--mac-dev-leftovers`, `--windows-temp`, `--windows-update`, `--windows-thumbnail`, `--windows-prefetch`, `--windows-wer`, `--windows-dev-leftovers`, `--browser-caches`, `--linux-cache`, `--linux-logs`, `--linux-tmp`, `--linux-journal`, `--linux-coredumps`, `--linux-trash`, `--snap-cache`, `--flatpak-cache`, `--linux-dev-leftovers`.
+    -   Category shortcuts (use any combination): `--node-modules`, `--docker`, `--xcode`, `--android-builds`, `--react-native-ios`, `--ios-project-builds`, `--web-project-builds`, `--jvm-builds`, `--gradle-cache`, `--maven-cache`, `--cargo-targets`, `--rails-artifacts`, `--go-builds`, `--cpp-builds`, `--php-vendor`, `--ruby-vendor`, `--python-cache`, `--cocoapods-cache`, `--mac-caches`, `--mac-logs`, `--mac-tmp`, `--ios-backups`, `--homebrew-cache`, `--mail-downloads`, `--mac-dev-leftovers`, `--windows-temp`, `--windows-update`, `--windows-thumbnail`, `--windows-prefetch`, `--windows-wer`, `--windows-dev-leftovers`, `--browser-caches`, `--linux-cache`, `--linux-logs`, `--linux-tmp`, `--linux-journal`, `--linux-coredumps`, `--linux-trash`, `--snap-cache`, `--flatpak-cache`, `--linux-dev-leftovers`.
 
 If you supply category flags without a subcommand, `oscleaner` will default to running `clean` with those selections.
 
@@ -148,8 +154,8 @@ oscleaner --safe --max-size 10 --min-age 7
 
 **What safe mode does:**
 
-1. **Restricts categories** to only regenerable caches and build artifacts (15 out of 32):
-   `node_modules`, `cargo_targets`, `gradle_cache`, `maven_cache`, `php_vendor`, `ruby_vendor`, `python_cache`, `cocoapods_cache`, `android_builds`, `react_native_ios`, `xcode`, `homebrew_cache`, `browser_caches`, `snap_cache`, `flatpak_cache`.
+1. **Restricts categories** to only regenerable caches and build artifacts:
+   `node_modules`, `cargo_targets`, `gradle_cache`, `maven_cache`, `php_vendor`, `ruby_vendor`, `python_cache`, `cocoapods_cache`, `android_builds`, `react_native_ios`, `ios_project_builds`, `web_project_builds`, `jvm_builds`, `rails_artifacts`, `go_builds`, `cpp_builds`, `xcode`, `homebrew_cache`, `browser_caches`, `snap_cache`, `flatpak_cache`.
 2. **Skips recent files** — only deletes items last modified more than N days ago (default: 2). Override with `--min-age <DAYS>`.
 3. **Enforces a size cap** — aborts if the total to be deleted exceeds N GB (default: 20). Override with `--max-size <GB>`.
 4. **Protects sensitive paths** — items inside personal directories (`~/Documents`, `~/Desktop`, `~/Downloads`, `~/.ssh`, `~/.gnupg`, `~/.config`, etc.) and system directories (`/System`, `/usr`, `/etc`, `/var`, etc.) are never touched.
